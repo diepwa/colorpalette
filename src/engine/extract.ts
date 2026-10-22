@@ -6,6 +6,8 @@ export interface PaletteColor {
   lch: Lch;
   /** Part des pixels de l'image, dans [0, 1]. */
   proportion: number;
+  /** Couleur vive et rare, gardée même sous le seuil de proportion. */
+  accent?: boolean;
 }
 
 export interface ExtractOptions {
@@ -21,6 +23,16 @@ export interface ExtractOptions {
   maxSamples?: number;
   iterations?: number;
   seed?: number;
+  /** Chroma OKLCH minimal d'un pixel pour être candidat accent. */
+  accentMinChroma?: number;
+  /** Distance OKLab minimale entre un accent et toute couleur dominante. */
+  accentDistance?: number;
+  /** Proportion minimale d'un accent (0,03 % par défaut). */
+  accentMinProportion?: number;
+  /** Nombre maximal d'accents renvoyés, en plus des couleurs dominantes. */
+  maxAccents?: number;
+  /** Nombre maximal de pixels parcourus pour chercher les accents. */
+  accentSamples?: number;
 }
 
 const DEFAULTS: Required<ExtractOptions> = {
@@ -31,6 +43,11 @@ const DEFAULTS: Required<ExtractOptions> = {
   maxSamples: 20000,
   iterations: 20,
   seed: 1,
+  accentMinChroma: 0.1,
+  accentDistance: 0.15,
+  accentMinProportion: 0.0003,
+  maxAccents: 3,
+  accentSamples: 200000,
 };
 
 /** Générateur pseudo-aléatoire déterministe (mulberry32), pour des résultats reproductibles. */
@@ -173,8 +190,39 @@ function mergeClose(clusters: { lab: Lab; count: number }[], threshold: number) 
 }
 
 /**
+ * Cherche les couleurs vives et rares que le k-means noie : pixels saturés et loin
+ * de toutes les couleurs dominantes (ex. une jupe rouge dans un champ vert).
+ * L'échantillon est plus dense que celui du k-means pour ne pas rater de petites zones.
+ */
+function findAccents(data: Uint8ClampedArray, dominants: Lab[], opts: Required<ExtractOptions>, rand: () => number) {
+  const pixelCount = data.length / 4;
+  const stride = Math.max(1, Math.floor(pixelCount / opts.accentSamples));
+  const candidates: number[] = [];
+  let total = 0;
+  for (let i = 0; i < pixelCount; i += stride) {
+    const o = i * 4;
+    if (data[o + 3] < 128) continue;
+    total++;
+    const lab = rgb8ToOklab(data[o], data[o + 1], data[o + 2]);
+    if (Math.hypot(lab.a, lab.b) < opts.accentMinChroma) continue;
+    if (dominants.some((d) => labDistance(d, lab) < opts.accentDistance)) continue;
+    candidates.push(lab.L, lab.a, lab.b);
+  }
+  const n = candidates.length / 3;
+  if (total === 0 || n / total < opts.accentMinProportion) return [];
+
+  const clusters = kmeans(Float64Array.from(candidates), opts.maxAccents + 2, opts.iterations, rand);
+  return mergeClose(clusters, opts.mergeDistance * 2)
+    .filter((c) => c.count / total >= opts.accentMinProportion)
+    .sort((p, q) => q.count - p.count)
+    .slice(0, opts.maxAccents)
+    .map((c) => ({ lab: c.lab, proportion: c.count / total }));
+}
+
+/**
  * Extrait les couleurs dominantes d'une image (pixels RGBA) par k-means dans OKLab.
  * Les proportions sont calculées sur les pixels échantillonnés et triées par ordre décroissant.
+ * Les accents éventuels (couleurs vives et rares) sont ajoutés à la fin, marqués `accent`.
  */
 export function extractPalette(data: Uint8ClampedArray, options: ExtractOptions = {}): PaletteColor[] {
   const opts = { ...DEFAULTS, ...options };
@@ -188,10 +236,17 @@ export function extractPalette(data: Uint8ClampedArray, options: ExtractOptions 
     .sort((p, q) => q.count - p.count)
     .slice(0, opts.maxColors);
 
-  return merged.map(({ lab, count }) => {
+  const dominants: PaletteColor[] = merged.map(({ lab, count }) => {
     const lch = labToLch(lab);
     return { hex: lchToHex(lch), lab, lch, proportion: count / n };
   });
+  const accents: PaletteColor[] = findAccents(data, merged.map((c) => c.lab), opts, mulberry32(opts.seed + 1)).map(
+    ({ lab, proportion }) => {
+      const lch = labToLch(lab);
+      return { hex: lchToHex(lch), lab, lch, proportion, accent: true };
+    },
+  );
+  return [...dominants, ...accents];
 }
 
 /** Couleur d'un pixel précis (pipette). */

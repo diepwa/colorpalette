@@ -50,7 +50,28 @@ describe('extraction de palette', () => {
       const hex = '#' + [i * 20, 255 - i * 20, (i * 70) % 256].map((v) => v.toString(16).padStart(2, '0')).join('');
       return [hex, 1 / 12];
     });
-    expect(extractPalette(flatImage(regions), { maxColors: 6 }).length).toBeLessThanOrEqual(6);
+    const palette = extractPalette(flatImage(regions), { maxColors: 6 });
+    expect(palette.filter((c) => !c.accent).length).toBeLessThanOrEqual(6);
+  });
+
+  it('garde un accent vif et rare que le k-means noie', () => {
+    // Une tache rouge de 0,2 % dans un champ de verts (cas de la jupe rouge).
+    const data = addNoise(flatImage([
+      ['#334a19', 0.4],
+      ['#687a45', 0.398],
+      ['#c0141a', 0.002],
+      ['#dedad8', 0.2],
+    ], 100000), 6);
+    const palette = extractPalette(data);
+    const accents = palette.filter((c) => c.accent);
+    expect(accents).toHaveLength(1);
+    expect(labDistance(accents[0].lab, lab('#c0141a'))).toBeLessThan(0.03);
+    expect(accents[0].proportion).toBeCloseTo(0.002, 3);
+  });
+
+  it('ne signale pas d’accent dans une image sans couleur isolée', () => {
+    const data = addNoise(flatImage([['#2d5016', 0.6], ['#d4a373', 0.4]], 40000), 12);
+    expect(extractPalette(data).filter((c) => c.accent)).toHaveLength(0);
   });
 
   it('ignore les pixels transparents', () => {

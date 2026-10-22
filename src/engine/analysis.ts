@@ -6,6 +6,7 @@ export interface AnalysisInput {
   hex: string;
   lch: Lch;
   proportion: number;
+  accent?: boolean;
 }
 
 export interface AnalysisOptions {
@@ -23,6 +24,11 @@ export interface AnalysisOptions {
   analogousWidth?: number;
   /** Écart de score sous lequel l'harmonie la plus simple passe devant. */
   tieMargin?: number;
+  /**
+   * Poids plancher d'un accent, en part de la surface chromatique : une petite tache
+   * vive attire l'œil bien plus que sa surface ne le dit.
+   */
+  accentShare?: number;
 }
 
 export const DEFAULT_ANALYSIS_OPTIONS: Required<AnalysisOptions> = {
@@ -32,6 +38,7 @@ export const DEFAULT_ANALYSIS_OPTIONS: Required<AnalysisOptions> = {
   step: 1,
   coverageMinShare: 0.05,
   minChromaticShare: 0.1,
+  accentShare: 0.1,
   analogousWidth: DEFAULT_ANALOGOUS_WIDTH,
   tieMargin: 0.05,
 };
@@ -124,7 +131,11 @@ export function analyzeHarmony(colors: AnalysisInput[], options: AnalysisOptions
   const totalShare = colors.reduce((s, c) => s + c.proportion, 0);
   const chromaticShare = totalShare > 0 ? chromatic.reduce((s, c) => s + c.proportion, 0) / totalShare : 0;
 
-  const rawWeights = chromatic.map((c) => c.proportion * c.lch.C);
+  const chromaticProportion = chromatic.reduce((s, c) => s + c.proportion, 0);
+  const rawWeights = chromatic.map((c) => {
+    const share = c.accent ? Math.max(c.proportion, opts.accentShare * chromaticProportion) : c.proportion;
+    return share * c.lch.C;
+  });
   const weightSum = rawWeights.reduce((s, w) => s + w, 0);
   const points: WeightedPoint[] = chromatic.map((color, i) => ({
     color,

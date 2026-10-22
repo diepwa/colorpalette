@@ -68,6 +68,17 @@ describe('analyse d’harmonie', () => {
     expect(top.outliers.map((c) => c.hex)).toEqual([palette[2].hex]);
   });
 
+  it('un accent rare pèse plus que sa surface', () => {
+    const greens = [atRyb(178, 0.5, 0.4, 0.08), atRyb(182, 0.45, 0.55, 0.08)];
+    const red = { ...atRyb(0, 0.002, 0.45, 0.17), accent: true };
+    const plain = analyzeHarmony([...greens, { ...red, accent: false }]);
+    const withAccent = analyzeHarmony([...greens, red]);
+    expect(plain.ranking[0].type).toBe('monochrome');
+    const comp = withAccent.ranking.find((r) => r.type === 'complementary')!;
+    expect(comp.coverage).toBe(1);
+    expect(comp.score).toBeGreaterThan(plain.ranking.find((r) => r.type === 'complementary')!.score);
+  });
+
   it('ignore les neutres et refuse le verdict sur une image grise', () => {
     const palette = [
       color({ L: 0.2, C: 0.01, h: 40 }, 0.5),
