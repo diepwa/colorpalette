@@ -2,17 +2,30 @@ import { useCallback, useEffect, useRef, useState, type DragEvent } from 'react'
 import { pickColor } from './engine';
 import { fr } from './i18n/fr';
 import { extractInWorker } from './lib/extractClient';
-import { isAcceptedImage, loadImage, pixelAt } from './lib/loadImage';
+import { encodeJpeg, isAcceptedImage, loadImage, pixelAt } from './lib/loadImage';
+import { createIndexedDbStore, type SavedImage } from './lib/store';
 import { useSwipe } from './lib/useSwipe';
 import { Card } from './components/Card';
 import { CardBack } from './components/CardBack';
 import type { ImageCard } from './types';
 
-let nextId = 1;
+const store = createIndexedDbStore();
+
+type View = 'session' | 'saved';
+
+/** Enregistre (ou met à jour) une carte dans la bibliothèque locale. */
+async function persist(card: ImageCard) {
+  const blob = card.blob ?? (card.pixels ? await encodeJpeg(card.pixels) : null);
+  if (!blob) throw new Error('Image pas encore prête');
+  const savedAt = card.savedAt ?? Date.now();
+  await store.put({ id: card.id, name: card.name, savedAt, blob, palette: card.palette, pinned: card.pinned });
+  return { blob, savedAt };
+}
 
 export default function App() {
   const [cards, setCards] = useState<ImageCard[]>([]);
-  const [index, setIndex] = useState(0);
+  const [view, setView] = useState<View>('session');
+  const [indices, setIndices] = useState<Record<View, number>>({ session: 0, saved: 0 });
   const [flipped, setFlipped] = useState<Set<string>>(new Set());
   const [toast, setToast] = useState<string | null>(null);
   const [dropping, setDropping] = useState(false);
@@ -28,21 +41,84 @@ export default function App() {
   const updateCard = (id: string, patch: Partial<ImageCard>) =>
     setCards((cs) => cs.map((c) => (c.id === id ? { ...c, ...patch } : c)));
 
+  const visible = cards.filter((c) => (view === 'session' ? c.origin === 'session' : c.saved));
+  const savedCount = cards.filter((c) => c.saved).length;
+  const index = Math.min(indices[view], Math.max(0, visible.length - 1));
+  const setIndex = (next: number | ((i: number) => number)) =>
+    setIndices((all) => ({ ...all, [view]: typeof next === 'function' ? next(Math.min(all[view], Math.max(0, visible.length - 1))) : next }));
+
+  // Bibliothèque locale chargée au démarrage ; les pixels (pipette) sont décodés ensuite.
+  useEffect(() => {
+    let cancelled = false;
+    store
+      .list()
+      .then((saved: SavedImage[]) => {
+        if (cancelled) return;
+        const loaded: ImageCard[] = saved.map((s) => ({
+          id: s.id,
+          name: s.name,
+          url: URL.createObjectURL(s.blob),
+          blob: s.blob,
+          pixels: null,
+          status: 'ready',
+          palette: s.palette,
+          pinned: s.pinned,
+          saved: true,
+          origin: 'library',
+          savedAt: s.savedAt,
+        }));
+        setCards((cs) => [...cs, ...loaded]);
+        for (const s of saved) {
+          void loadImage(s.blob).then(({ pixels }) => updateCard(s.id, { pixels }));
+        }
+      })
+      .catch(() => {
+        /* Stockage indisponible (navigation privée…) : l'app marche sans bibliothèque. */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const toggleSave = async (card: ImageCard) => {
+    try {
+      if (card.saved) {
+        await store.remove(card.id);
+        updateCard(card.id, { saved: false, savedAt: undefined });
+        showToast(fr.unsaved);
+      } else {
+        const { blob, savedAt } = await persist(card);
+        updateCard(card.id, { saved: true, blob, savedAt });
+        showToast(fr.saved);
+      }
+    } catch {
+      showToast(fr.saveFailed);
+    }
+  };
+
+  const setPinned = (card: ImageCard, pinned: ImageCard['pinned']) => {
+    updateCard(card.id, { pinned });
+    if (card.saved) void persist({ ...card, pinned }).catch(() => showToast(fr.saveFailed));
+  };
+
   const addFiles = async (files: FileList | File[]) => {
     const accepted = [...files].filter(isAcceptedImage);
     if (accepted.length === 0) return;
     const fresh: ImageCard[] = accepted.map((f) => ({
-      id: String(nextId++),
+      id: crypto.randomUUID(),
       name: f.name,
       url: '',
       pixels: null,
       status: 'loading',
       palette: [],
       pinned: [],
+      saved: false,
+      origin: 'session',
     }));
-    const firstNew = cards.length;
+    const firstNew = cards.filter((c) => c.origin === 'session').length;
     setCards((cs) => [...cs, ...fresh]);
-    setIndex(firstNew);
+    setView('session');
+    setIndices((all) => ({ ...all, session: firstNew }));
     await Promise.all(
       accepted.map(async (file, i) => {
         const { id } = fresh[i];
@@ -67,9 +143,9 @@ export default function App() {
     }
   };
 
-  const go = (delta: number) => setIndex((i) => Math.min(cards.length - 1, Math.max(0, i + delta)));
+  const go = (delta: number) => setIndex((i) => Math.min(visible.length - 1, Math.max(0, i + delta)));
 
-  const current = cards[index];
+  const current = visible[index];
   const setFlip = (id: string | undefined, value: boolean) =>
     setFlipped((f) => {
       if (!id || f.has(id) === value) return f;
@@ -86,7 +162,7 @@ export default function App() {
     if (!el || !card?.pixels || flipped.has(card.id)) return;
     const rect = el.getBoundingClientRect();
     const [r, g, b] = pixelAt(card.pixels, clientX - rect.left, clientY - rect.top, rect.width, rect.height);
-    updateCard(card.id, { pinned: [...card.pinned, pickColor(r, g, b)] });
+    setPinned(card, [...card.pinned, pickColor(r, g, b)]);
   };
 
   const { offset, dragging, bind } = useSwipe({
@@ -136,7 +212,7 @@ export default function App() {
     >
       <header className="topbar">
         <h1>{fr.appTitle}</h1>
-        {cards.length > 0 && <span className="counter">{fr.counter(index + 1, cards.length)}</span>}
+        {visible.length > 0 && <span className="counter">{fr.counter(index + 1, visible.length)}</span>}
         <button type="button" className="add" onClick={() => fileInput.current?.click()}>
           {fr.addImages}
         </button>
@@ -153,21 +229,36 @@ export default function App() {
           }}
         />
       </header>
+      <nav className="tabs" aria-label="Vues">
+        <button type="button" aria-pressed={view === 'session'} onClick={() => setView('session')}>
+          {fr.tabSession}
+        </button>
+        <button type="button" aria-pressed={view === 'saved'} onClick={() => setView('saved')}>
+          {fr.tabSaved(savedCount)}
+        </button>
+      </nav>
 
-      {cards.length === 0 ? (
+      {visible.length === 0 ? (
         <main className="empty">
-          <div className="empty-box">
-            <h2>{fr.emptyTitle}</h2>
-            <p>{fr.emptyBody}</p>
-            <button type="button" className="add primary" onClick={() => fileInput.current?.click()}>
-              {fr.emptyButton}
-            </button>
-          </div>
+          {view === 'session' ? (
+            <div className="empty-box">
+              <h2>{fr.emptyTitle}</h2>
+              <p>{fr.emptyBody}</p>
+              <button type="button" className="add primary" onClick={() => fileInput.current?.click()}>
+                {fr.emptyButton}
+              </button>
+            </div>
+          ) : (
+            <div className="empty-box">
+              <h2>{fr.savedEmptyTitle}</h2>
+              <p>{fr.savedEmptyBody}</p>
+            </div>
+          )}
         </main>
       ) : (
         <main className="stage">
           <div className={`stack${dragging ? ' dragging' : ''}`} {...bind}>
-            {cards.map((card, i) => {
+            {visible.map((card, i) => {
               if (Math.abs(i - index) > 1) return null;
               return (
                 <div
@@ -181,8 +272,9 @@ export default function App() {
                       <Card
                         card={card}
                         onCopy={copy}
-                        onRemovePin={(p) => updateCard(card.id, { pinned: card.pinned.filter((_, k) => k !== p) })}
+                        onRemovePin={(p) => setPinned(card, card.pinned.filter((_, k) => k !== p))}
                         onFlip={() => setFlip(card.id, true)}
+                        onToggleSave={() => void toggleSave(card)}
                       />
                     </div>
                     <div className="face back-face" aria-hidden={!flipped.has(card.id)}>
@@ -199,11 +291,11 @@ export default function App() {
             <button type="button" aria-label={fr.previous} disabled={index === 0} onClick={() => go(-1)}>
               ↑
             </button>
-            <button type="button" aria-label={fr.next} disabled={index === cards.length - 1} onClick={() => go(1)}>
+            <button type="button" aria-label={fr.next} disabled={index === visible.length - 1} onClick={() => go(1)}>
               ↓
             </button>
           </nav>
-          {index < cards.length - 1 && <p className="hint">{fr.swipeHint}</p>}
+          {index < visible.length - 1 && <p className="hint">{fr.swipeHint}</p>}
         </main>
       )}
 

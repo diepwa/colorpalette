@@ -15,7 +15,7 @@ export function isAcceptedImage(file: File): boolean {
 }
 
 /** Lit un fichier image et le réduit en interne avant l'analyse. */
-export async function loadImage(file: File): Promise<LoadedImage> {
+export async function loadImage(file: Blob): Promise<LoadedImage> {
   const bitmap = await createImageBitmap(file);
   const scale = Math.min(1, ANALYSIS_MAX_SIDE / Math.max(bitmap.width, bitmap.height));
   const width = Math.max(1, Math.round(bitmap.width * scale));
@@ -42,4 +42,15 @@ export function pixelAt(pixels: ImageData, x: number, y: number, boxW: number, b
   const py = Math.min(pixels.height - 1, Math.max(0, Math.floor((y - offsetY) / scale)));
   const o = (py * pixels.width + px) * 4;
   return [pixels.data[o], pixels.data[o + 1], pixels.data[o + 2]];
+}
+
+/** Encode les pixels réduits en JPEG, pour l'enregistrement. */
+export function encodeJpeg(pixels: ImageData, quality = 0.88): Promise<Blob> {
+  const canvas = document.createElement('canvas');
+  canvas.width = pixels.width;
+  canvas.height = pixels.height;
+  canvas.getContext('2d')?.putImageData(pixels, 0, 0);
+  return new Promise((resolve, reject) =>
+    canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('Encodage JPEG impossible'))), 'image/jpeg', quality),
+  );
 }
