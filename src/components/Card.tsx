@@ -7,10 +7,11 @@ interface Props {
   onCopy: (hex: string) => void;
   onRemovePin: (index: number) => void;
   onFlip: () => void;
+  onToggleSave: () => void;
 }
 
 /** Recto d'une carte : l'image et sa palette. */
-export function Card({ card, onCopy, onRemovePin, onFlip }: Props) {
+export function Card({ card, onCopy, onRemovePin, onFlip, onToggleSave }: Props) {
   return (
     <article className="card" aria-label={card.name}>
       <div className="card-image" data-card-id={card.id}>
@@ -18,9 +19,21 @@ export function Card({ card, onCopy, onRemovePin, onFlip }: Props) {
         {card.status === 'loading' && <div className="card-status">{fr.analyzing}</div>}
         {card.status === 'error' && <div className="card-status">{fr.loadError}</div>}
         {card.status === 'ready' && (
-          <button type="button" className="flip-button" aria-label={fr.flip} title={fr.flipHint} onClick={onFlip}>
-            ⟳
-          </button>
+          <div className="card-actions">
+            <button
+              type="button"
+              className={`round-button${card.saved ? ' on' : ''}`}
+              aria-label={card.saved ? fr.unsave : fr.save}
+              aria-pressed={card.saved}
+              title={card.saved ? fr.unsave : fr.save}
+              onClick={onToggleSave}
+            >
+              {card.saved ? '★' : '☆'}
+            </button>
+            <button type="button" className="round-button" aria-label={fr.flip} title={fr.flipHint} onClick={onFlip}>
+              ⟳
+            </button>
+          </div>
         )}
       </div>
       <div className="card-palette">
@@ -42,7 +55,8 @@ export function Card({ card, onCopy, onRemovePin, onFlip }: Props) {
               </>
             )}
             <p className="card-foot">
-              {fr.pickHint} · {card.ms !== undefined && fr.extractedIn(card.ms)}
+              {fr.pickHint}
+              {card.ms !== undefined && ` · ${fr.extractedIn(card.ms)}`}
             </p>
           </>
         )}
