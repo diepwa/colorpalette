@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { fitToGamut, hexToLch, hueDistance, isInSrgbGamut, lchToHex } from '../color';
+import { fitToGamut, hexToLch, hueDistance, isInSrgbGamut, lchToHex, vividColor } from '../color';
 
 describe('distance de teinte', () => {
   it('est circulaire', () => {
@@ -40,5 +40,19 @@ describe('gamut', () => {
   it('laisse intacte une couleur déjà dans la gamme', () => {
     const inside = hexToLch('#5a7d9a');
     expect(fitToGamut(inside).C).toBeCloseTo(inside.C, 6);
+  });
+});
+
+describe('couleur la plus vive d’une teinte', () => {
+  it.each([
+    ['#ff0000'],
+    ['#ffff00'],
+    ['#00ff00'],
+    ['#0000ff'],
+  ])('retrouve %s pour sa teinte', (hex) => {
+    const vivid = lchToHex(vividColor(hexToLch(hex).h));
+    const [r, g, b] = [1, 3, 5].map((i) => parseInt(vivid.slice(i, i + 2), 16));
+    const [er, eg, eb] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
+    expect(Math.max(Math.abs(r - er), Math.abs(g - eg), Math.abs(b - eb))).toBeLessThanOrEqual(12);
   });
 });

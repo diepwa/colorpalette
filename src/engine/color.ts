@@ -104,3 +104,22 @@ export function isInSrgbGamut(lch: Lch, eps = 1e-4): boolean {
   ];
   return rgb.every((v) => v >= -eps && v <= 1 + eps);
 }
+
+/**
+ * Couleur la plus vive de la teinte h dans sRGB (le « sommet » du gamut) :
+ * rouge pur pour h ≈ 29°, jaune pur pour h ≈ 110°. Sert à dessiner la roue et les gabarits.
+ */
+export function vividColor(h: number): Lch {
+  let best: Lch = { L: 0.5, C: 0, h };
+  for (let L = 0.3; L <= 0.98; L += 0.005) {
+    const c = fitToGamut({ L, C: 0.4, h });
+    if (c.C > best.C) best = c;
+  }
+  // Affinage autour du meilleur pas grossier.
+  const L0 = best.L;
+  for (let L = L0 - 0.005; L <= L0 + 0.005; L += 0.0002) {
+    const c = fitToGamut({ L, C: 0.4, h });
+    if (c.C > best.C) best = c;
+  }
+  return best;
+}
