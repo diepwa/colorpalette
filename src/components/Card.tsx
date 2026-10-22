@@ -8,10 +8,11 @@ interface Props {
   onRemovePin: (index: number) => void;
   onFlip: () => void;
   onToggleSave: () => void;
+  onExport: (kind: 'text' | 'png' | 'json') => void;
 }
 
 /** Recto d'une carte : l'image et sa palette. */
-export function Card({ card, onCopy, onRemovePin, onFlip, onToggleSave }: Props) {
+export function Card({ card, onCopy, onRemovePin, onFlip, onToggleSave, onExport }: Props) {
   return (
     <article className="card" aria-label={card.name}>
       <div className="card-image" data-card-id={card.id}>
@@ -54,6 +55,17 @@ export function Card({ card, onCopy, onRemovePin, onFlip, onToggleSave }: Props)
                 </ul>
               </>
             )}
+            <div className="export-row" role="group" aria-label={fr.exportGroup}>
+              <button type="button" title={fr.copyPaletteTitle} onClick={() => onExport('text')}>
+                {fr.copyPalette}
+              </button>
+              <button type="button" title={fr.exportPngTitle} onClick={() => onExport('png')}>
+                {fr.exportPng}
+              </button>
+              <button type="button" title={fr.exportJsonTitle} onClick={() => onExport('json')}>
+                {fr.exportJson}
+              </button>
+            </div>
             <p className="card-foot">
               {fr.pickHint}
               {card.ms !== undefined && ` · ${fr.extractedIn(card.ms)}`}

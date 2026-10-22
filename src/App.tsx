@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type DragEvent } from 'react';
 import { pickColor } from './engine';
 import { fr } from './i18n/fr';
+import { baseName, download, paletteCardPng, paletteJson, paletteText } from './lib/export';
 import { extractInWorker } from './lib/extractClient';
 import { encodeJpeg, isAcceptedImage, loadImage, pixelAt } from './lib/loadImage';
 import { createIndexedDbStore, type SavedImage } from './lib/store';
@@ -143,6 +144,21 @@ export default function App() {
     }
   };
 
+  const exportCard = async (card: ImageCard, kind: 'text' | 'png' | 'json') => {
+    try {
+      if (kind === 'text') {
+        await navigator.clipboard.writeText(paletteText(card));
+        showToast(fr.paletteCopied);
+      } else if (kind === 'json') {
+        download(new Blob([paletteJson(card)], { type: 'application/json' }), `${baseName(card.name)}-palette.json`);
+      } else {
+        download(await paletteCardPng(card), `${baseName(card.name)}-palette.png`);
+      }
+    } catch {
+      showToast(fr.exportFailed);
+    }
+  };
+
   const go = (delta: number) => setIndex((i) => Math.min(visible.length - 1, Math.max(0, i + delta)));
 
   const current = visible[index];
@@ -275,6 +291,7 @@ export default function App() {
                         onRemovePin={(p) => setPinned(card, card.pinned.filter((_, k) => k !== p))}
                         onFlip={() => setFlip(card.id, true)}
                         onToggleSave={() => void toggleSave(card)}
+                        onExport={(kind) => void exportCard(card, kind)}
                       />
                     </div>
                     <div className="face back-face" aria-hidden={!flipped.has(card.id)}>
