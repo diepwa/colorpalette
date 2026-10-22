@@ -584,3 +584,18 @@ button:focus-visible {
 .round-button.on {
   color: #ffd54a;
 }
+
+/* Exports */
+.export-row {
+  display: flex;
+  gap: 6px;
+}
+
+.export-row button {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 3px 12px;
+  font-size: 0.78rem;
+  cursor: pointer;
+}

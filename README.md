@@ -21,6 +21,7 @@ npm run build   # vérification TypeScript + build de production
   - `wheel.ts` + `rybTable.json` : roues RJB et RVB. La roue RJB est une table de correspondance modifiable (angle RJB → teinte OKLCH, interpolation linéaire).
   - `harmonies.ts` : complémentaire, split-complémentaire, triadique, tétradique, carré, analogue, monochrome.
   - `analysis.ts` : score d'harmonie d'une palette (voir ci-dessous).
+- `src/lib/export.ts` : exports d'une carte, sans serveur : palette en texte (presse-papiers), carte palette PNG (canvas) et JSON (palette, épinglées, classement des harmonies).
 - `src/i18n/fr.ts` : chaînes de l'interface.
 
 ## Table RJB (non utilisée par l'app)
