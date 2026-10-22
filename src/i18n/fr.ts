@@ -21,6 +21,27 @@ export const fr = {
   extractedIn: (ms: number) => `Extraction en ${ms} ms`,
   previous: 'Image précédente',
   next: 'Image suivante',
+  flip: 'Retourner la carte',
+  flipHint: 'Glisse vers la droite pour voir la roue',
+  backTitle: 'Roue RVB',
+  closest: 'Plus proche :',
+  unreliable: 'Image surtout neutre : pas d’harmonie fiable',
+  wheelLabel: (h: string) => `Roue RVB avec les couleurs de l'image et le gabarit ${h}`,
+  harmonyGroup: 'Harmonie',
+  outOfScheme: 'Hors schéma :',
+  compositionFrom: 'Composition à partir de',
+  baseGroup: 'Couleur de base',
+  baseLabel: (hex: string) => `Base ${hex}`,
+  approximation: 'Approximation : une image réelle n’est presque jamais une harmonie parfaite.',
+  harmonies: {
+    complementary: 'Complémentaire',
+    splitComplementary: 'Split-compl.',
+    triadic: 'Triadique',
+    tetradic: 'Tétradique',
+    square: 'Carré',
+    analogous: 'Analogue',
+    monochrome: 'Monochrome',
+  },
 };
 
 export type Strings = typeof fr;

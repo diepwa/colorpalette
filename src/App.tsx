@@ -5,6 +5,7 @@ import { extractInWorker } from './lib/extractClient';
 import { isAcceptedImage, loadImage, pixelAt } from './lib/loadImage';
 import { useSwipe } from './lib/useSwipe';
 import { Card } from './components/Card';
+import { CardBack } from './components/CardBack';
 import type { ImageCard } from './types';
 
 let nextId = 1;
@@ -12,6 +13,7 @@ let nextId = 1;
 export default function App() {
   const [cards, setCards] = useState<ImageCard[]>([]);
   const [index, setIndex] = useState(0);
+  const [flipped, setFlipped] = useState<Set<string>>(new Set());
   const [toast, setToast] = useState<string | null>(null);
   const [dropping, setDropping] = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
@@ -67,11 +69,21 @@ export default function App() {
 
   const go = (delta: number) => setIndex((i) => Math.min(cards.length - 1, Math.max(0, i + delta)));
 
+  const current = cards[index];
+  const setFlip = (id: string | undefined, value: boolean) =>
+    setFlipped((f) => {
+      if (!id || f.has(id) === value) return f;
+      const next = new Set(f);
+      if (value) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+
   // Pipette : un toucher sur l'image épingle la couleur du pixel touché.
   const pick = (clientX: number, clientY: number) => {
     const el = document.elementFromPoint(clientX, clientY)?.closest<HTMLElement>('.card-image');
     const card = cards.find((c) => c.id === el?.dataset.cardId);
-    if (!el || !card?.pixels) return;
+    if (!el || !card?.pixels || flipped.has(card.id)) return;
     const rect = el.getBoundingClientRect();
     const [r, g, b] = pixelAt(card.pixels, clientX - rect.left, clientY - rect.top, rect.width, rect.height);
     updateCard(card.id, { pinned: [...card.pinned, pickColor(r, g, b)] });
@@ -80,6 +92,8 @@ export default function App() {
   const { offset, dragging, bind } = useSwipe({
     onSwipeUp: () => go(1),
     onSwipeDown: () => go(-1),
+    onSwipeRight: () => current?.status === 'ready' && setFlip(current.id, true),
+    onSwipeLeft: () => setFlip(current?.id, false),
     onTap: pick,
   });
 
@@ -87,10 +101,20 @@ export default function App() {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'ArrowDown' || e.key === 'PageDown') go(1);
       if (e.key === 'ArrowUp' || e.key === 'PageUp') go(-1);
+      if (e.key === 'ArrowRight' && current?.status === 'ready') setFlip(current.id, true);
+      if (e.key === 'ArrowLeft') setFlip(current?.id, false);
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   });
+
+  // Pendant un glissement horizontal, la carte suit le doigt jusqu'à mi-tour.
+  const flipAngle = (id: string, isCurrent: boolean) => {
+    const baseAngle = flipped.has(id) ? 180 : 0;
+    if (!isCurrent || !offset.dx) return baseAngle;
+    const drag = Math.max(-90, Math.min(90, (offset.dx / 300) * 90));
+    return Math.max(0, Math.min(180, baseAngle + drag));
+  };
 
   const onDrop = (e: DragEvent) => {
     e.preventDefault();
@@ -152,11 +176,21 @@ export default function App() {
                   style={{ transform: `translateY(calc(${(i - index) * 100}% + ${(i - index) * 16}px + ${offset.dy}px))` }}
                   aria-hidden={i !== index}
                 >
-                  <Card
-                    card={card}
-                    onCopy={copy}
-                    onRemovePin={(p) => updateCard(card.id, { pinned: card.pinned.filter((_, k) => k !== p) })}
-                  />
+                  <div className="flipper" style={{ transform: `rotateY(${flipAngle(card.id, i === index)}deg)` }}>
+                    <div className="face front" aria-hidden={flipped.has(card.id)}>
+                      <Card
+                        card={card}
+                        onCopy={copy}
+                        onRemovePin={(p) => updateCard(card.id, { pinned: card.pinned.filter((_, k) => k !== p) })}
+                        onFlip={() => setFlip(card.id, true)}
+                      />
+                    </div>
+                    <div className="face back-face" aria-hidden={!flipped.has(card.id)}>
+                      {card.status === 'ready' && (flipped.has(card.id) || i === index) && (
+                        <CardBack card={card} onCopy={copy} onFlipBack={() => setFlip(card.id, false)} />
+                      )}
+                    </div>
+                  </div>
                 </div>
               );
             })}

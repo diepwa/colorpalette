@@ -6,16 +6,22 @@ interface Props {
   card: ImageCard;
   onCopy: (hex: string) => void;
   onRemovePin: (index: number) => void;
+  onFlip: () => void;
 }
 
 /** Recto d'une carte : l'image et sa palette. */
-export function Card({ card, onCopy, onRemovePin }: Props) {
+export function Card({ card, onCopy, onRemovePin, onFlip }: Props) {
   return (
     <article className="card" aria-label={card.name}>
       <div className="card-image" data-card-id={card.id}>
         <img src={card.url} alt={card.name} draggable={false} />
         {card.status === 'loading' && <div className="card-status">{fr.analyzing}</div>}
         {card.status === 'error' && <div className="card-status">{fr.loadError}</div>}
+        {card.status === 'ready' && (
+          <button type="button" className="flip-button" aria-label={fr.flip} title={fr.flipHint} onClick={onFlip}>
+            ⟳
+          </button>
+        )}
       </div>
       <div className="card-palette">
         {card.status === 'ready' && (
