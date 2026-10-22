@@ -359,3 +359,182 @@ button:focus-visible {
   font-size: 0.85rem;
   font-weight: 500;
 }
+
+/* Retournement de carte */
+.slot {
+  perspective: 1400px;
+}
+
+.flipper {
+  position: relative;
+  height: 100%;
+  transform-style: preserve-3d;
+  transition: transform 0.45s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.stack.dragging .flipper {
+  transition: none;
+}
+
+.face {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+.back-face {
+  transform: rotateY(180deg);
+}
+
+.flip-button {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 0;
+  background: rgba(0, 0, 0, 0.5);
+  color: #fff;
+  font-size: 1.05rem;
+  cursor: pointer;
+}
+
+.flip-button.inline {
+  position: static;
+  background: var(--surface-2);
+  color: var(--text);
+}
+
+/* Verso */
+.card.back {
+  padding: 14px;
+  gap: 10px;
+}
+
+.back-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.back-eyebrow {
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.verdict {
+  margin: 0;
+  flex: 1;
+  text-align: right;
+  font-size: 0.85rem;
+}
+
+.verdict strong {
+  font-size: 1rem;
+}
+
+.wheel {
+  width: 100%;
+  max-width: 260px;
+  max-height: 34vh;
+  align-self: center;
+  flex: 0 1 auto;
+  min-height: 0;
+}
+
+.harmony-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.harmony-chips button {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+
+.harmony-chips button[aria-pressed='true'] {
+  background: var(--text);
+  color: var(--bg);
+  border-color: var(--text);
+}
+
+.chip-score {
+  font: 0.7rem var(--mono);
+  opacity: 0.75;
+}
+
+.back-note {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.mini {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.15);
+}
+
+.composition {
+  display: grid;
+  gap: 8px;
+}
+
+.base-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.base-chip {
+  width: 26px;
+  height: 26px;
+  border-radius: 5px;
+  border: 2px solid transparent;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+  cursor: pointer;
+  padding: 0;
+}
+
+.base-chip[aria-pressed='true'] {
+  border-color: var(--text);
+}
+
+.composition-swatches {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(64px, 1fr));
+  gap: 8px;
+}
+
+.composition-swatches li {
+  display: grid;
+  gap: 4px;
+}
+
+.composition-chip {
+  display: block;
+  height: 40px;
+  border-radius: 6px;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+}
