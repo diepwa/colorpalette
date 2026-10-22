@@ -1,6 +1,6 @@
 # Testeur d'harmonies de couleurs
 
-Outil web perso pour peintres de figurines : on charge une image, l'app en extrait les couleurs dominantes (hex, OKLCH), génère des harmonies à partir d'une couleur de base (roue RJB des peintres ou RVB) et indique de quelle harmonie l'image se rapproche. Tout est traité dans le navigateur, aucune image n'est envoyée à un serveur.
+Outil web perso pour peintres de figurines : on charge une image, l'app en extrait les couleurs dominantes (hex, OKLCH), génère des harmonies à partir d'une couleur de base sur la roue RVB et indique de quelle harmonie l'image se rapproche. Tout est traité dans le navigateur, aucune image n'est envoyée à un serveur.
 
 Le cahier des charges est dans [BRIEF.md](BRIEF.md).
 
@@ -23,7 +23,9 @@ npm run build   # vérification TypeScript + build de production
   - `analysis.ts` : score d'harmonie d'une palette (voir ci-dessous).
 - `src/i18n/fr.ts` : chaînes de l'interface.
 
-## Table RJB
+## Table RJB (non utilisée par l'app)
+
+Depuis le 22/10, l'app utilise uniquement la roue RVB. La roue RJB reste disponible dans le moteur (`wheel: 'ryb'`).
 
 | Couleur | Angle RJB | Teinte OKLCH |
 | --- | --- | --- |

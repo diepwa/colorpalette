@@ -61,7 +61,7 @@ export interface HarmonyOptions {
 const MONOCHROME_LIGHTNESS_STEPS = [-0.3, -0.15, 0, 0.15, 0.3];
 
 export function generateHarmony(base: Lch, type: HarmonyType, options: HarmonyOptions = {}): HarmonyColor[] {
-  const wheel = options.wheel ?? 'ryb';
+  const wheel = options.wheel ?? 'rgb';
   const L = options.lightness ?? base.L;
   const C = options.chroma ?? base.C;
   const baseAngle = hueToWheel(base.h, wheel);

@@ -6,13 +6,15 @@ import { wheelToHue } from '../wheel';
 import { flatImage } from './helpers';
 
 const color = (lch: Lch, proportion: number): AnalysisInput => ({ hex: lchToHex(lch), lch, proportion });
-/** Couleur placée à un angle donné de la roue RJB. */
-const atRyb = (angle: number, proportion: number, L = 0.6, C = 0.14) =>
-  color({ L, C, h: wheelToHue(angle, 'ryb') }, proportion);
+/** Couleur placée à un angle donné de la roue (RVB par défaut). */
+const at = (angle: number, proportion: number, L = 0.6, C = 0.14, wheel: 'rgb' | 'ryb' = 'rgb') =>
+  color({ L, C, h: wheelToHue(angle, wheel) }, proportion);
 
 describe('analyse d’harmonie', () => {
   it('deux aplats complémentaires -> complémentaire, score élevé', () => {
-    const palette = extractPalette(flatImage([['#d62828', 0.55], ['#2a9d3a', 0.45]]));
+    const red = lchToHex({ L: 0.55, C: 0.18, h: 30 });
+    const teal = lchToHex({ L: 0.6, C: 0.11, h: 210 });
+    const palette = extractPalette(flatImage([[red, 0.55], [teal, 0.45]]));
     const result = analyzeHarmony(palette);
     expect(result.reliable).toBe(true);
     expect(result.ranking[0].type).toBe('complementary');
@@ -34,16 +36,16 @@ describe('analyse d’harmonie', () => {
 
   it('le tétradique ne gagne pas par défaut', () => {
     const cases = [
-      [atRyb(0, 0.5), atRyb(180, 0.5)],
-      [atRyb(40, 0.4), atRyb(160, 0.3), atRyb(280, 0.3)],
-      [atRyb(100, 1)],
+      [at(0, 0.5), at(180, 0.5)],
+      [at(40, 0.4), at(160, 0.3), at(280, 0.3)],
+      [at(100, 1)],
     ];
     for (const palette of cases) {
       expect(['tetradic', 'square']).not.toContain(analyzeHarmony(palette).ranking[0].type);
     }
   });
 
-  it('reconnaît chaque gabarit construit sur la roue RJB', () => {
+  it('reconnaît chaque gabarit construit sur la roue', () => {
     const expectations: [string, number[]][] = [
       ['complementary', [0, 180]],
       ['splitComplementary', [0, 150, 210]],
@@ -53,14 +55,14 @@ describe('analyse d’harmonie', () => {
       ['analogous', [0, 30, -30]],
     ];
     for (const [type, offsets] of expectations) {
-      const palette = offsets.map((o) => atRyb(70 + o, 1 / offsets.length));
+      const palette = offsets.map((o) => at(70 + o, 1 / offsets.length));
       const result = analyzeHarmony(palette);
       expect(result.ranking[0].type, type).toBe(type);
     }
   });
 
   it('trouve la rotation optimale et les couleurs hors schéma', () => {
-    const palette = [atRyb(20, 0.45), atRyb(200, 0.45), atRyb(110, 0.1)];
+    const palette = [at(20, 0.45), at(200, 0.45), at(110, 0.1)];
     const result = analyzeHarmony(palette);
     const top = result.ranking[0];
     expect(top.type).toBe('complementary');
@@ -69,8 +71,8 @@ describe('analyse d’harmonie', () => {
   });
 
   it('un accent rare pèse plus que sa surface', () => {
-    const greens = [atRyb(178, 0.5, 0.4, 0.08), atRyb(182, 0.45, 0.55, 0.08)];
-    const red = { ...atRyb(0, 0.002, 0.45, 0.17), accent: true };
+    const greens = [at(178, 0.5, 0.4, 0.08), at(182, 0.45, 0.55, 0.08)];
+    const red = { ...at(0, 0.002, 0.45, 0.17), accent: true };
     const plain = analyzeHarmony([...greens, { ...red, accent: false }]);
     const withAccent = analyzeHarmony([...greens, red]);
     expect(plain.ranking[0].type).toBe('monochrome');

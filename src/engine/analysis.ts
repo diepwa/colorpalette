@@ -32,7 +32,7 @@ export interface AnalysisOptions {
 }
 
 export const DEFAULT_ANALYSIS_OPTIONS: Required<AnalysisOptions> = {
-  wheel: 'ryb',
+  wheel: 'rgb',
   chromaThreshold: 0.04,
   tolerance: 15,
   step: 1,
