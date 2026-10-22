@@ -1,0 +1,39 @@
+/* Thème sombre neutre : les couleurs ressortent mieux sur un fond gris sans teinte. */
+:root {
+  --bg: #1e1e1e;
+  --surface: #2a2a2a;
+  --border: #3a3a3a;
+  --text: #e6e6e6;
+  --text-muted: #a0a0a0;
+  --font: system-ui, 'Segoe UI', Roboto, sans-serif;
+  --mono: ui-monospace, Consolas, monospace;
+
+  color-scheme: dark;
+  font: 16px/1.5 var(--font);
+  color: var(--text);
+  background: var(--bg);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+}
+
+.app {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 24px 16px;
+}
+
+h1 {
+  margin: 0;
+  font-size: 1.5rem;
+}
+
+.subtitle {
+  margin-top: 4px;
+  color: var(--text-muted);
+}
