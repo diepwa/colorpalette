@@ -1,0 +1,11 @@
+{
+  "description": "Points d'ancrage de la roue RJB des peintres : angle RJB -> teinte OKLCH (degrés). Interpolation linéaire entre les points. Modifiable.",
+  "anchors": [
+    { "name": "rouge", "ryb": 0, "oklch": 29 },
+    { "name": "orange", "ryb": 60, "oklch": 53 },
+    { "name": "jaune", "ryb": 120, "oklch": 110 },
+    { "name": "vert", "ryb": 180, "oklch": 142 },
+    { "name": "bleu", "ryb": 240, "oklch": 264 },
+    { "name": "violet", "ryb": 300, "oklch": 305 }
+  ]
+}
