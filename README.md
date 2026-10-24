@@ -15,15 +15,19 @@ npm test        # tests du moteur (Vitest)
 npm run build   # vérification TypeScript + build de production
 ```
 
+## Mise en ligne (GitHub Pages)
+
+Chaque push sur `main` lance [`deploy.yml`](.github/workflows/deploy.yml) : tests, build, puis publication sur https://diepwa.github.io/colorpalette/. À activer une fois dans *Settings > Pages > Build and deployment > Source : GitHub Actions*. La configuration Firebase est dans `.env` (valeurs publiques, l'accès est protégé par la connexion et les règles Firestore).
+
 ## Firestore (bibliothèque en ligne)
 
-Sans configuration, les images enregistrées restent dans le navigateur (IndexedDB). Avec Firebase, un bouton « Connexion » (email et mot de passe) apparaît : une fois connecté, les images enregistrées vont dans Firestore et se retrouvent sur tous tes appareils. Les images déjà enregistrées dans le navigateur sont transférées dans le compte à la première connexion.
+Sans configuration Firebase, les images enregistrées restent dans le navigateur (IndexedDB). Avec Firebase, un bouton « Connexion » (email et mot de passe) apparaît : une fois connecté, les images enregistrées vont dans Firestore et se retrouvent sur tous tes appareils. Les images déjà enregistrées dans le navigateur sont transférées dans le compte à la première connexion.
 
 1. Dans la [console Firebase](https://console.firebase.google.com), créer un projet (Google Analytics inutile).
 2. *Build > Firestore Database > Créer une base de données*, en mode production, région `eur3` ou `europe-west`.
 3. Onglet *Règles* de Firestore : coller le contenu de [`firestore.rules`](firestore.rules) et publier. Chaque utilisateur ne lit et n'écrit que ses propres images.
 4. *Build > Authentication > Commencer*, activer le fournisseur *Adresse e-mail/Mot de passe*, puis créer son compte dans l'onglet *Utilisateurs* (l'app ne propose pas l'inscription).
-5. *Paramètres du projet > Vos applications > Web (</>)* : enregistrer une app, puis copier `apiKey`, `authDomain`, `projectId` et `appId` dans un fichier `.env.local` à partir de [`.env.example`](.env.example).
+5. *Paramètres du projet > Vos applications > Web (</>)* : enregistrer une app, puis copier `apiKey`, `authDomain`, `projectId` et `appId` dans `.env` (modèle : [`.env.example`](.env.example)). Un `.env.local` éventuel (non versionné) a la priorité, pour tester un autre projet.
 6. Relancer `npm run dev`.
 
 Les images sont stockées dans le document Firestore lui-même (JPEG réduit sous 800 Ko, la limite d'un document étant 1 Mio) : pas besoin de Cloud Storage, le plan gratuit Spark suffit. Chemin : `users/{uid}/images/{id}`.
