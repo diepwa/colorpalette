@@ -5,8 +5,6 @@ export interface SwipeHandlers {
   onSwipeDown?: () => void;
   onSwipeLeft?: () => void;
   onSwipeRight?: () => void;
-  /** Toucher bref sans glissement ; coordonnées dans la fenêtre. */
-  onTap?: (clientX: number, clientY: number) => void;
 }
 
 /** Distance (px) au-delà de laquelle un glissement devient un swipe. */
@@ -37,11 +35,12 @@ export function useSwipe(handlers: SwipeHandlers) {
 
   const onPointerDown = (e: PointerEvent<HTMLElement>) => {
     if (e.button !== 0) return;
-    // Les boutons gardent leur clic normal.
-    if ((e.target as HTMLElement).closest('button, a, input')) return;
+    // Les contrôles gardent leur clic normal ; les zones marquées data-noswipe gèrent leurs propres gestes.
+    if ((e.target as HTMLElement).closest('button, a, input, select, label, [data-noswipe]')) return;
+    // Un deuxième doigt : c'est un pincement (zoom de l'image), pas un swipe.
+    if (start.current) return reset();
     start.current = { x: e.clientX, y: e.clientY, t: performance.now(), id: e.pointerId };
     axis.current = null;
-    e.currentTarget.setPointerCapture(e.pointerId);
   };
 
   const onPointerMove = (e: PointerEvent<HTMLElement>) => {
@@ -52,6 +51,8 @@ export function useSwipe(handlers: SwipeHandlers) {
     if (!axis.current && Math.hypot(dx, dy) > TAP_SLOP) {
       axis.current = Math.abs(dy) > Math.abs(dx) ? 'y' : 'x';
       setDragging(true);
+      // Capture seulement une fois le geste engagé, pour laisser l'image voir un éventuel pincement.
+      e.currentTarget.setPointerCapture(e.pointerId);
     }
     if (axis.current === 'y') setOffset({ dx: 0, dy });
     else if (axis.current === 'x') setOffset({ dx, dy: 0 });
@@ -64,7 +65,7 @@ export function useSwipe(handlers: SwipeHandlers) {
     const dy = e.clientY - s.y;
     const dt = Math.max(1, performance.now() - s.t);
     if (!axis.current) {
-      handlers.onTap?.(e.clientX, e.clientY);
+      // Simple toucher : rien à faire.
     } else if (axis.current === 'y') {
       const fast = Math.abs(dy) / dt > VELOCITY;
       if (dy < -DISTANCE || (fast && dy < 0)) handlers.onSwipeUp?.();
