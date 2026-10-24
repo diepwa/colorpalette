@@ -34,7 +34,10 @@ export function useAccount() {
             : { status: 'signedOut' },
         ),
       );
-    })().catch(() => setAccount({ status: 'disabled' }));
+    })().catch((e) => {
+      console.error('Firebase indisponible', e);
+      setAccount({ status: 'disabled' });
+    });
     return () => {
       cancelled = true;
       unsubscribe();

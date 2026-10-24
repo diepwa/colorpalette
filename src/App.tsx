@@ -42,7 +42,7 @@ export default function App() {
   const showToast = useCallback((msg: string) => {
     setToast(msg);
     window.clearTimeout(toastTimer.current);
-    toastTimer.current = window.setTimeout(() => setToast(null), 1600);
+    toastTimer.current = window.setTimeout(() => setToast(null), Math.max(1600, msg.length * 60));
   }, []);
 
   const updateCard = (id: string, patch: Partial<ImageCard>) =>
@@ -283,7 +283,7 @@ export default function App() {
           {fr.addImages}
         </button>
         {account.status === 'signedOut' && (
-          <button type="button" className="add" onClick={() => void signIn().catch(() => showToast(fr.signInFailed))}>
+          <button type="button" className="add" onClick={() => void signIn().catch((e: { code?: string }) => showToast(fr.signInError(e.code, location.hostname)))}>
             {fr.signIn}
           </button>
         )}

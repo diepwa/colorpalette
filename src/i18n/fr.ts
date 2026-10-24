@@ -66,7 +66,14 @@ export const fr = {
   signOut: 'Se déconnecter',
   signedInAs: (name: string) => `Connecté : ${name}`,
   confirmSignOut: (name: string) => `Se déconnecter de ${name} ? Les images enregistrées restent dans ton compte.`,
-  signInFailed: 'Connexion impossible',
+  signInError: (code: string | undefined, host: string) =>
+    code === 'auth/unauthorized-domain'
+      ? `Connexion refusée : ajoute « ${host} » dans Firebase > Authentication > Paramètres > Domaines autorisés`
+      : code === 'auth/operation-not-allowed'
+        ? 'Connexion Google pas encore activée dans Firebase > Authentication'
+        : code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request'
+          ? 'Connexion annulée'
+          : `Connexion impossible${code ? ` (${code})` : ''}`,
   cloudFailed: 'Bibliothèque en ligne indisponible',
   migrated: (n: number) => `${n} image${n > 1 ? 's' : ''} transférée${n > 1 ? 's' : ''} dans ton compte`,
 
