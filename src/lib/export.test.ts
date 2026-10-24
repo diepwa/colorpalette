@@ -34,12 +34,12 @@ describe('exports', () => {
     ]);
   });
 
-  it('exporte un JSON relisible avec catégories, positions et harmonies', () => {
+  it('exporte un JSON relisible avec catégories et positions', () => {
     const data = JSON.parse(paletteJson(card, new Date('2026-10-24T12:00:00Z')));
     expect(data.exportedAt).toBe('2026-10-24T12:00:00.000Z');
     expect(data.categories.map((c: { name: string }) => c.name)).toEqual(['Visage', 'Vêtements', 'Sans catégorie']);
     expect(data.categories[0].colors[0]).toMatchObject({ hex: '#e0a080', at: { x: 0.5, y: 0.2 } });
     expect(data.categories[2].colors[0].at).toBeUndefined();
-    expect(data.harmony.ranking).toHaveLength(7);
+    expect(data.harmony).toBeUndefined();
   });
 });

@@ -1,4 +1,3 @@
-import { analyzeHarmony } from '../engine';
 import { fr } from '../i18n/fr';
 import type { ImageCard, PickedColor } from '../types';
 import { groupByCategory } from './cards';
@@ -15,12 +14,6 @@ export function baseName(name: string): string {
   return stem.replace(/[^\p{L}\p{N}._-]+/gu, '-').replace(/^-+|-+$/g, '') || 'palette';
 }
 
-/** Harmonie la plus proche des couleurs prélevées (poids égaux), ou undefined si elles sont surtout neutres. */
-function closestHarmony(colors: PickedColor[]) {
-  const analysis = analyzeHarmony(colors.map((c) => ({ hex: c.hex, lch: c.lch, proportion: 1 / colors.length })));
-  return { analysis, best: analysis.reliable ? analysis.ranking[0] : undefined };
-}
-
 /** Couleurs en texte, regroupées par catégorie, prêtes à coller. */
 export function paletteText(card: Exportable): string {
   return groupByCategory(card)
@@ -34,28 +27,16 @@ const colorJson = (c: PickedColor) => ({
   ...(c.at ? { at: { x: round(c.at.x, 4), y: round(c.at.y, 4) } } : {}),
 });
 
-/** Export JSON : catégories avec leurs couleurs, et classement des harmonies sur l'ensemble. */
+/** Export JSON : catégories avec leurs couleurs et l'endroit où elles ont été prises. */
 export function paletteJson(card: Exportable, exportedAt = new Date()): string {
-  const { analysis, best } = closestHarmony(card.colors);
   return JSON.stringify(
     {
       name: card.name,
       exportedAt: exportedAt.toISOString(),
-      wheel: 'rgb',
       categories: groupByCategory(card).map((g) => ({
         name: groupName(g.category?.name),
         colors: g.colors.map(colorJson),
       })),
-      harmony: {
-        reliable: analysis.reliable,
-        closest: best?.type ?? null,
-        ranking: analysis.ranking.map((r) => ({
-          type: r.type,
-          score: round(r.score, 3),
-          coverage: round(r.coverage, 3),
-          referenceHue: round(r.referenceHue, 1),
-        })),
-      },
     },
     null,
     2,
@@ -75,13 +56,12 @@ export async function paletteCardPng(card: Exportable & { blob?: Blob; url: stri
   const source = card.blob ?? (await (await fetch(card.url)).blob());
   const img = await createImageBitmap(source);
   const groups = groupByCategory(card);
-  const { best } = closestHarmony(card.colors);
 
   const imgW = CARD_W - PAD * 2;
   const imgH = Math.round(Math.min(imgW * 1.1, (imgW * img.height) / img.width));
   const chipW = (imgW - GAP * (COLS - 1)) / COLS;
   const groupsH = groups.reduce((h, g) => h + TITLE_H + Math.ceil(g.colors.length / COLS) * ROW_H, 0);
-  const height = PAD + 70 + imgH + 32 + groupsH + 40 + PAD;
+  const height = PAD + 70 + imgH + 32 + groupsH + PAD;
 
   const canvas = document.createElement('canvas');
   canvas.width = CARD_W;
@@ -131,11 +111,6 @@ export async function paletteCardPng(card: Exportable & { blob?: Blob; url: stri
     });
     y += Math.ceil(g.colors.length / COLS) * ROW_H;
   }
-
-  ctx.fillStyle = '#a0a0a0';
-  ctx.font = '28px system-ui, sans-serif';
-  const verdict = best ? `${fr.closest} ${fr.harmonies[best.type]} · ${best.score.toFixed(2).replace('.', ',')}` : fr.unreliable;
-  ctx.fillText(fitText(ctx, verdict, imgW), PAD, height - PAD);
 
   return new Promise((resolve, reject) =>
     canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('Encodage PNG impossible'))), 'image/png'),

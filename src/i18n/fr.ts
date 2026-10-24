@@ -75,26 +75,10 @@ export const fr = {
 
   // Verso
   backTitle: 'Roue RVB',
-  closest: 'Plus proche :',
-  unreliable: 'Couleurs surtout neutres : pas d’harmonie fiable',
   backEmpty: 'Prélève des couleurs sur l’image pour les voir sur la roue.',
   allCategories: 'Toutes',
-  wheelLabel: (h: string) => `Roue RVB avec tes couleurs et le gabarit ${h}`,
-  harmonyGroup: 'Harmonie',
-  outOfScheme: 'Hors schéma :',
-  compositionFrom: 'Composition à partir de',
-  baseGroup: 'Couleur de base',
-  baseLabel: (hex: string) => `Base ${hex}`,
-  approximation: 'Approximation : une image réelle n’est presque jamais une harmonie parfaite.',
-  harmonies: {
-    complementary: 'Complémentaire',
-    splitComplementary: 'Split-compl.',
-    triadic: 'Triadique',
-    tetradic: 'Tétradique',
-    square: 'Carré',
-    analogous: 'Analogue',
-    monochrome: 'Monochrome',
-  },
+  wheelLabel: (n: number) => `Roue RVB avec ${n} couleur${n > 1 ? 's' : ''} prélevée${n > 1 ? 's' : ''}`,
+  wheelHint: 'Teinte autour de la roue, saturation du centre (gris) vers le bord (couleur pure).',
 
   // Exports
   exportGroup: 'Exporter',
