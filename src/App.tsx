@@ -29,6 +29,7 @@ export default function App() {
   const [flipped, setFlipped] = useState<Set<string>>(new Set());
   const [editing, setEditing] = useState<string | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
+  const [showMarkers, setShowMarkers] = useState(true);
   const [toast, setToast] = useState<string | null>(null);
   const [dropping, setDropping] = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
@@ -302,6 +303,8 @@ export default function App() {
                       <Card
                         card={card}
                         editing={editing === card.id}
+                        showMarkers={showMarkers}
+                        onToggleMarkers={() => setShowMarkers((v) => !v)}
                         selectedId={selected}
                         onSelect={setSelected}
                         onPick={(at) => pick(card, at)}

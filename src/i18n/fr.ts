@@ -27,6 +27,24 @@ export const fr = {
   removeColor: (hex: string) => `Retirer ${hex}`,
   selectColor: (hex: string) => `Sélectionner ${hex}`,
   moveTo: 'Ranger dans',
+  showMarkers: 'Afficher les repères',
+  hideMarkers: 'Masquer les repères',
+  zoomIn: 'Zoomer',
+  zoomOut: 'Dézoomer',
+  zoomReset: 'Revenir à l’image entière',
+
+  // Transition entre deux couleurs
+  transition: '◐ Transition',
+  transitionTitle: 'Voir la transition entre deux couleurs',
+  transitionPickFirst: 'Touche la couleur de départ',
+  transitionPickSecond: 'Touche la couleur d’arrivée',
+  transitionHeading: 'Transition',
+  transitionSteps: 'Nuances',
+  transitionSwap: 'Inverser',
+  transitionClose: 'Fermer',
+  transitionMix: (a: number, b: number) => `${a} / ${b}`,
+  transitionNote:
+    'Proportions « couleur 1 / couleur 2 » pour chaque nuance. Le calcul suit la perception à l’écran : avec de vrais pigments, ajuste à l’œil.',
 
   // Catégories
   defaultCategories: ['Visage', 'Vêtements'],

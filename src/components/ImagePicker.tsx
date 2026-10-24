@@ -1,11 +1,14 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, type PointerEvent } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type PointerEvent, type WheelEvent } from 'react';
+import { fr } from '../i18n/fr';
 import { containRect, pixelAt, pixelCoords, toImagePoint } from '../lib/loadImage';
+import { clampView, zoomAt, type View } from '../lib/zoom';
 import type { ImageCard, ImagePoint } from '../types';
 
 const LOUPE = 120;
 /** Pixels visibles dans la loupe, de chaque côté du pixel visé. */
 const RADIUS = 7;
 const CELL = LOUPE / (RADIUS * 2 + 1);
+const IDENTITY: View = { scale: 1, tx: 0, ty: 0 };
 
 interface Probe {
   /** Position dans le cadre, en px. */
@@ -15,19 +18,32 @@ interface Probe {
   touch: boolean;
 }
 
+type Gesture =
+  | { kind: 'pick' }
+  | { kind: 'pan'; x0: number; y0: number; view0: View }
+  | { kind: 'pinch'; dist0: number; mid0: { x: number; y: number }; view0: View };
+
 interface Props {
   card: ImageCard;
   editing: boolean;
+  showMarkers: boolean;
   selectedId: string | null;
   onPick: (at: ImagePoint) => void;
 }
 
-/** Image d'une carte. En mode édition : pipette avec loupe et repères des couleurs prélevées. */
-export function ImagePicker({ card, editing, selectedId, onPick }: Props) {
+/**
+ * Image d'une carte, zoomable (pincement, molette, boutons) sans toucher au reste de l'écran.
+ * En mode édition : pipette avec loupe. Les repères montrent où les couleurs ont été prises.
+ */
+export function ImagePicker({ card, editing, showMarkers, selectedId, onPick }: Props) {
   const box = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ w: 0, h: 0 });
+  const [view, setView] = useState<View>(IDENTITY);
   const [probe, setProbe] = useState<Probe | null>(null);
-  const pressed = useRef(false);
+  const pointers = useRef(new Map<number, { x: number; y: number }>());
+  const gesture = useRef<Gesture | null>(null);
+  // Après un pincement, le doigt restant ne prélève rien en se levant.
+  const pinched = useRef(false);
 
   useLayoutEffect(() => {
     const el = box.current;
@@ -39,63 +55,151 @@ export function ImagePicker({ card, editing, selectedId, onPick }: Props) {
 
   const { pixels } = card;
   const rect = pixels && size.w > 0 ? containRect(size.w, size.h, pixels.width, pixels.height) : null;
+  const zoomed = view.scale > 1.001;
 
-  const locate = (e: PointerEvent<HTMLElement>): Probe => {
-    const r = e.currentTarget.getBoundingClientRect();
-    const cx = e.clientX - r.left;
-    const cy = e.clientY - r.top;
-    return { cx, cy, at: rect ? toImagePoint(rect, cx, cy) : null, touch: e.pointerType !== 'mouse' };
+  const boxPoint = (e: { clientX: number; clientY: number }) => {
+    const r = box.current!.getBoundingClientRect();
+    return { x: e.clientX - r.left, y: e.clientY - r.top };
   };
 
-  const handlers = editing
-    ? {
-        onPointerDown: (e: PointerEvent<HTMLElement>) => {
-          if (e.button !== 0) return;
-          e.currentTarget.setPointerCapture(e.pointerId);
-          pressed.current = true;
-          setProbe(locate(e));
-        },
-        onPointerMove: (e: PointerEvent<HTMLElement>) => {
-          if (pressed.current || e.pointerType === 'mouse') setProbe(locate(e));
-        },
-        onPointerUp: (e: PointerEvent<HTMLElement>) => {
-          if (!pressed.current) return;
-          pressed.current = false;
-          const p = locate(e);
-          if (p.at) onPick(p.at);
-          setProbe(p.touch ? null : p);
-        },
-        onPointerLeave: () => {
-          if (!pressed.current) setProbe(null);
-        },
-        onPointerCancel: () => {
-          pressed.current = false;
-          setProbe(null);
-        },
-      }
-    : {};
+  // Point du cadre → position sur l'image, en défaisant le zoom.
+  const locate = (e: PointerEvent<HTMLElement>): Probe => {
+    const { x, y } = boxPoint(e);
+    const at = rect ? toImagePoint(rect, (x - view.tx) / view.scale, (y - view.ty) / view.scale) : null;
+    return { cx: x, cy: y, at, touch: e.pointerType !== 'mouse' };
+  };
 
-  // Hors édition, la loupe disparaît.
+  const setClamped = (next: View) => setView(clampView(next, size.w, size.h));
+
+  const onPointerDown = (e: PointerEvent<HTMLElement>) => {
+    if (e.button !== 0 || (e.target as HTMLElement).closest('button')) return;
+    pointers.current.set(e.pointerId, boxPoint(e));
+    if (pointers.current.size === 2) {
+      const [a, b] = [...pointers.current.values()];
+      gesture.current = {
+        kind: 'pinch',
+        dist0: Math.max(1, Math.hypot(a.x - b.x, a.y - b.y)),
+        mid0: { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 },
+        view0: view,
+      };
+      pinched.current = true;
+      setProbe(null);
+      e.currentTarget.setPointerCapture(e.pointerId);
+      return;
+    }
+    if (pointers.current.size > 2) return;
+    pinched.current = false;
+    if (editing) {
+      gesture.current = { kind: 'pick' };
+      setProbe(locate(e));
+      e.currentTarget.setPointerCapture(e.pointerId);
+    } else if (zoomed) {
+      const p = boxPoint(e);
+      gesture.current = { kind: 'pan', x0: p.x, y0: p.y, view0: view };
+      e.currentTarget.setPointerCapture(e.pointerId);
+    }
+  };
+
+  const onPointerMove = (e: PointerEvent<HTMLElement>) => {
+    if (pointers.current.has(e.pointerId)) pointers.current.set(e.pointerId, boxPoint(e));
+    const g = gesture.current;
+    if (g?.kind === 'pinch' && pointers.current.size >= 2) {
+      const [a, b] = [...pointers.current.values()];
+      const dist = Math.hypot(a.x - b.x, a.y - b.y);
+      const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+      // Le point de l'image sous le milieu des doigts reste sous les doigts.
+      const scale = g.view0.scale * (dist / g.dist0);
+      const cx = (g.mid0.x - g.view0.tx) / g.view0.scale;
+      const cy = (g.mid0.y - g.view0.ty) / g.view0.scale;
+      setClamped({ scale, tx: mid.x - cx * scale, ty: mid.y - cy * scale });
+    } else if (g?.kind === 'pan') {
+      const p = boxPoint(e);
+      setClamped({ ...g.view0, tx: g.view0.tx + p.x - g.x0, ty: g.view0.ty + p.y - g.y0 });
+    } else if (editing && (g?.kind === 'pick' || (!g && e.pointerType === 'mouse'))) {
+      setProbe(locate(e));
+    }
+  };
+
+  const onPointerUp = (e: PointerEvent<HTMLElement>) => {
+    if (!pointers.current.delete(e.pointerId)) return;
+    const g = gesture.current;
+    if (g?.kind === 'pick' && !pinched.current) {
+      const p = locate(e);
+      if (p.at) onPick(p.at);
+      setProbe(p.touch ? null : p);
+    }
+    if (pointers.current.size === 0) {
+      gesture.current = null;
+      pinched.current = false;
+    } else if (g?.kind === 'pinch') {
+      gesture.current = null;
+    }
+  };
+
+  const onPointerCancel = (e: PointerEvent<HTMLElement>) => {
+    pointers.current.delete(e.pointerId);
+    if (pointers.current.size === 0) gesture.current = null;
+    setProbe(null);
+  };
+
+  const onWheel = (e: WheelEvent<HTMLElement>) => {
+    const { x, y } = boxPoint(e);
+    setClamped(zoomAt(view, Math.exp(-e.deltaY * 0.002), x, y));
+  };
+
+  const zoomBy = (factor: number) => setClamped(zoomAt(view, factor, size.w / 2, size.h / 2));
+
   const shownProbe = editing ? probe : null;
-  const markers = card.colors.filter((c) => c.at && (editing || c.id === selectedId));
+  const markers = showMarkers ? card.colors.filter((c) => c.at) : [];
 
   return (
     <div
       ref={box}
       className={`card-image${editing ? ' editing' : ''}`}
-      data-noswipe={editing ? '' : undefined}
-      {...handlers}
+      data-noswipe={editing || zoomed ? '' : undefined}
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onPointerUp={onPointerUp}
+      onPointerCancel={onPointerCancel}
+      onPointerLeave={() => !gesture.current && setProbe(null)}
+      onWheel={onWheel}
     >
-      {card.url && <img src={card.url} alt={card.name} draggable={false} />}
+      {card.url && (
+        <img
+          src={card.url}
+          alt={card.name}
+          draggable={false}
+          style={{ transform: `translate(${view.tx}px, ${view.ty}px) scale(${view.scale})` }}
+        />
+      )}
       {rect &&
         markers.map((c) => (
           <span
             key={c.id}
             className={`marker${c.id === selectedId ? ' selected' : ''}`}
-            style={{ left: rect.x + c.at!.x * rect.width, top: rect.y + c.at!.y * rect.height, background: c.hex }}
+            style={{
+              left: view.tx + (rect.x + c.at!.x * rect.width) * view.scale,
+              top: view.ty + (rect.y + c.at!.y * rect.height) * view.scale,
+              background: c.hex,
+            }}
           />
         ))}
       {shownProbe?.at && pixels && <Loupe pixels={pixels} probe={shownProbe} at={shownProbe.at} box={size} />}
+      {card.status === 'ready' && (
+        <div className="zoom-controls">
+          {zoomed && (
+            <button type="button" aria-label={fr.zoomReset} title={fr.zoomReset} onClick={() => setView(IDENTITY)}>
+              1:1
+            </button>
+          )}
+          <button type="button" aria-label={fr.zoomOut} title={fr.zoomOut} disabled={!zoomed} onClick={() => zoomBy(1 / 1.5)}>
+            −
+          </button>
+          <button type="button" aria-label={fr.zoomIn} title={fr.zoomIn} onClick={() => zoomBy(1.5)}>
+            +
+          </button>
+        </div>
+      )}
     </div>
   );
 }
