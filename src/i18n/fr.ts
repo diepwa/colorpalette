@@ -59,6 +59,34 @@ export const fr = {
   tabSaved: (n: number) => `Enregistrées (${n})`,
   savedEmptyTitle: 'Aucune image enregistrée',
   savedEmptyBody: 'Touche ☆ sur une carte pour la garder ici. Les images restent dans ce navigateur.',
+  savedEmptyBodyCloud: 'Touche ☆ sur une carte pour la garder ici. Elle est enregistrée dans ton compte et retrouvée sur tes autres appareils.',
+
+  // Compte (Firestore)
+  signIn: 'Connexion',
+  signOut: 'Se déconnecter',
+  signedInAs: (name: string) => `Connecté : ${name}`,
+  confirmSignOut: (name: string) => `Se déconnecter de ${name} ? Les images enregistrées restent dans ton compte.`,
+  signInTitle: 'Connexion à ta bibliothèque',
+  email: 'Email',
+  password: 'Mot de passe',
+  signingIn: 'Connexion…',
+  forgotPassword: 'Mot de passe oublié ?',
+  resetNeedsEmail: 'Indique d’abord ton email.',
+  resetSent: (email: string) => `Email de réinitialisation envoyé à ${email}.`,
+  signInError: (code: string | undefined) =>
+    code === 'auth/invalid-credential' || code === 'auth/wrong-password' || code === 'auth/user-not-found'
+      ? 'Email ou mot de passe incorrect.'
+      : code === 'auth/invalid-email'
+        ? 'Adresse email invalide.'
+        : code === 'auth/too-many-requests'
+          ? 'Trop d’essais : réessaie dans quelques minutes.'
+          : code === 'auth/network-request-failed'
+            ? 'Pas de connexion internet.'
+            : code === 'auth/operation-not-allowed'
+              ? 'Connexion par email pas activée dans Firebase > Authentication.'
+              : `Connexion impossible${code ? ` (${code})` : ''}.`,
+  cloudFailed: 'Bibliothèque en ligne indisponible',
+  migrated: (n: number) => `${n} image${n > 1 ? 's' : ''} transférée${n > 1 ? 's' : ''} dans ton compte`,
 
   // Verso
   backTitle: 'Roue RVB',
