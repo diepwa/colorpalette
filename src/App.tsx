@@ -1,14 +1,13 @@
 import { useCallback, useEffect, useRef, useState, type DragEvent } from 'react';
-import { pickColor } from './engine';
 import { fr } from './i18n/fr';
+import { addColor, defaultCategories } from './lib/cards';
 import { baseName, download, paletteCardPng, paletteJson, paletteText } from './lib/export';
-import { extractInWorker } from './lib/extractClient';
 import { encodeJpeg, isAcceptedImage, loadImage, pixelAt } from './lib/loadImage';
 import { createIndexedDbStore, type SavedImage } from './lib/store';
 import { useSwipe } from './lib/useSwipe';
-import { Card } from './components/Card';
+import { Card, type ExportKind } from './components/Card';
 import { CardBack } from './components/CardBack';
-import type { ImageCard } from './types';
+import type { ImageCard, ImagePoint } from './types';
 
 const store = createIndexedDbStore();
 
@@ -19,7 +18,7 @@ async function persist(card: ImageCard) {
   const blob = card.blob ?? (card.pixels ? await encodeJpeg(card.pixels) : null);
   if (!blob) throw new Error('Image pas encore prête');
   const savedAt = card.savedAt ?? Date.now();
-  await store.put({ id: card.id, name: card.name, savedAt, blob, palette: card.palette, pinned: card.pinned });
+  await store.put({ id: card.id, name: card.name, savedAt, blob, categories: card.categories, colors: card.colors });
   return { blob, savedAt };
 }
 
@@ -28,6 +27,8 @@ export default function App() {
   const [view, setView] = useState<View>('session');
   const [indices, setIndices] = useState<Record<View, number>>({ session: 0, saved: 0 });
   const [flipped, setFlipped] = useState<Set<string>>(new Set());
+  const [editing, setEditing] = useState<string | null>(null);
+  const [selected, setSelected] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [dropping, setDropping] = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
@@ -62,8 +63,9 @@ export default function App() {
           blob: s.blob,
           pixels: null,
           status: 'ready',
-          palette: s.palette,
-          pinned: s.pinned,
+          categories: s.categories,
+          colors: s.colors,
+          activeCategoryId: s.categories[0]?.id ?? null,
           saved: true,
           origin: 'library',
           savedAt: s.savedAt,
@@ -97,37 +99,52 @@ export default function App() {
     }
   };
 
-  const setPinned = (card: ImageCard, pinned: ImageCard['pinned']) => {
-    updateCard(card.id, { pinned });
-    if (card.saved) void persist({ ...card, pinned }).catch(() => showToast(fr.saveFailed));
+  /** Modifie une carte, et la réenregistre si elle est dans la bibliothèque. */
+  const changeCard = (card: ImageCard, patch: Partial<ImageCard>) => {
+    updateCard(card.id, patch);
+    if (card.saved && ('colors' in patch || 'categories' in patch)) {
+      void persist({ ...card, ...patch }).catch(() => showToast(fr.saveFailed));
+    }
+  };
+
+  const pick = (card: ImageCard, at: ImagePoint) => {
+    if (!card.pixels) return;
+    const { added, ...patch } = addColor(card, pixelAt(card.pixels, at), at);
+    changeCard(card, patch);
+    setSelected(added.id);
+    const category = card.categories.find((c) => c.id === card.activeCategoryId);
+    showToast(fr.picked(added.hex, category?.name ?? null));
   };
 
   const addFiles = async (files: FileList | File[]) => {
     const accepted = [...files].filter(isAcceptedImage);
     if (accepted.length === 0) return;
-    const fresh: ImageCard[] = accepted.map((f) => ({
-      id: crypto.randomUUID(),
-      name: f.name,
-      url: '',
-      pixels: null,
-      status: 'loading',
-      palette: [],
-      pinned: [],
-      saved: false,
-      origin: 'session',
-    }));
+    const fresh: ImageCard[] = accepted.map((f) => {
+      const categories = defaultCategories();
+      return {
+        id: crypto.randomUUID(),
+        name: f.name,
+        url: '',
+        pixels: null,
+        status: 'loading',
+        categories,
+        colors: [],
+        activeCategoryId: categories[0].id,
+        saved: false,
+        origin: 'session',
+      };
+    });
     const firstNew = cards.filter((c) => c.origin === 'session').length;
     setCards((cs) => [...cs, ...fresh]);
     setView('session');
     setIndices((all) => ({ ...all, session: firstNew }));
+    setEditing(null);
     await Promise.all(
       accepted.map(async (file, i) => {
         const { id } = fresh[i];
         try {
           const { url, pixels } = await loadImage(file);
-          updateCard(id, { url, pixels });
-          const { palette, ms } = await extractInWorker(id, pixels.data);
-          updateCard(id, { palette, ms, status: 'ready' });
+          updateCard(id, { url, pixels, status: 'ready' });
         } catch {
           updateCard(id, { status: 'error' });
         }
@@ -144,7 +161,8 @@ export default function App() {
     }
   };
 
-  const exportCard = async (card: ImageCard, kind: 'text' | 'png' | 'json') => {
+  const exportCard = async (card: ImageCard, kind: ExportKind) => {
+    if (card.colors.length === 0) return showToast(fr.nothingToExport);
     try {
       if (kind === 'text') {
         await navigator.clipboard.writeText(paletteText(card));
@@ -159,10 +177,15 @@ export default function App() {
     }
   };
 
-  const go = (delta: number) => setIndex((i) => Math.min(visible.length - 1, Math.max(0, i + delta)));
+  const go = (delta: number) => {
+    setIndex((i) => Math.min(visible.length - 1, Math.max(0, i + delta)));
+    setEditing(null);
+    setSelected(null);
+  };
 
   const current = visible[index];
-  const setFlip = (id: string | undefined, value: boolean) =>
+  const setFlip = (id: string | undefined, value: boolean) => {
+    if (value) setEditing(null);
     setFlipped((f) => {
       if (!id || f.has(id) === value) return f;
       const next = new Set(f);
@@ -170,15 +193,6 @@ export default function App() {
       else next.delete(id);
       return next;
     });
-
-  // Pipette : un toucher sur l'image épingle la couleur du pixel touché.
-  const pick = (clientX: number, clientY: number) => {
-    const el = document.elementFromPoint(clientX, clientY)?.closest<HTMLElement>('.card-image');
-    const card = cards.find((c) => c.id === el?.dataset.cardId);
-    if (!el || !card?.pixels || flipped.has(card.id)) return;
-    const rect = el.getBoundingClientRect();
-    const [r, g, b] = pixelAt(card.pixels, clientX - rect.left, clientY - rect.top, rect.width, rect.height);
-    setPinned(card, [...card.pinned, pickColor(r, g, b)]);
   };
 
   const { offset, dragging, bind } = useSwipe({
@@ -186,11 +200,11 @@ export default function App() {
     onSwipeDown: () => go(-1),
     onSwipeRight: () => current?.status === 'ready' && setFlip(current.id, true),
     onSwipeLeft: () => setFlip(current?.id, false),
-    onTap: pick,
   });
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      if ((e.target as HTMLElement).closest('input, select, textarea')) return;
       if (e.key === 'ArrowDown' || e.key === 'PageDown') go(1);
       if (e.key === 'ArrowUp' || e.key === 'PageUp') go(-1);
       if (e.key === 'ArrowRight' && current?.status === 'ready') setFlip(current.id, true);
@@ -287,8 +301,13 @@ export default function App() {
                     <div className="face front" aria-hidden={flipped.has(card.id)}>
                       <Card
                         card={card}
+                        editing={editing === card.id}
+                        selectedId={selected}
+                        onSelect={setSelected}
+                        onPick={(at) => pick(card, at)}
+                        onChange={(patch) => changeCard(card, patch)}
+                        onToggleEdit={() => setEditing((e) => (e === card.id ? null : card.id))}
                         onCopy={copy}
-                        onRemovePin={(p) => setPinned(card, card.pinned.filter((_, k) => k !== p))}
                         onFlip={() => setFlip(card.id, true)}
                         onToggleSave={() => void toggleSave(card)}
                         onExport={(kind) => void exportCard(card, kind)}

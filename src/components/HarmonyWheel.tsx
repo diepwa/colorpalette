@@ -31,7 +31,7 @@ interface Props {
   label: string;
 }
 
-/** Roue RVB : couleurs de l'image placées par teinte et saturation, gabarit d'harmonie superposé. */
+/** Roue RVB : couleurs placées par teinte et saturation, gabarit d'harmonie superposé. */
 export function HarmonyWheel({ analysis, harmony, label }: Props) {
   const targets = harmony ? [...harmony.targets].sort((a, b) => a - b) : [];
   const outliers = new Set(harmony?.outliers.map((o) => o.hex));
@@ -58,15 +58,15 @@ export function HarmonyWheel({ analysis, harmony, label }: Props) {
         const [x, y] = polar(t, R);
         return <line key={`l${t}`} x1={C} y1={C} x2={x} y2={y} stroke="var(--text)" strokeOpacity={0.25} />;
       })}
-      {points.map((p) => {
+      {points.map((p, i) => {
         const [x, y] = polar(p.angle, Math.min(1, p.color.lch.C / CHROMA_MAX) * R);
         const out = outliers.has(p.color.hex);
         return (
           <circle
-            key={p.color.hex + p.color.proportion}
+            key={i}
             cx={x}
             cy={y}
-            r={4.5 + Math.sqrt(p.color.proportion) * 22}
+            r={Math.min(12, 4.5 + Math.sqrt(p.color.proportion) * 22)}
             fill={p.color.hex}
             stroke={out ? '#ff8a8a' : 'var(--text)'}
             strokeWidth={out ? 1.5 : 1}

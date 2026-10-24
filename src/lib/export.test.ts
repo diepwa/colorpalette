@@ -1,17 +1,20 @@
 import { describe, expect, it } from 'vitest';
-import { hexToLch, type PaletteColor } from '../engine';
 import { baseName, paletteJson, paletteText } from './export';
-
-const color = (hex: string, proportion: number, accent = false): PaletteColor => {
-  const lch = hexToLch(hex);
-  const h = (lch.h * Math.PI) / 180;
-  return { hex, lch, lab: { L: lch.L, a: lch.C * Math.cos(h), b: lch.C * Math.sin(h) }, proportion, ...(accent ? { accent } : {}) };
-};
+import { picked } from './testColors';
 
 const card = {
-  name: 'champ de blé.jpg',
-  palette: [color('#2f6b2a', 0.6), color('#8fae4b', 0.39), color('#b0120f', 0.01, true)],
-  pinned: [color('#d8c27a', 0)],
+  name: 'chevalier.jpg',
+  categories: [
+    { id: 'face', name: 'Visage' },
+    { id: 'cloth', name: 'Vêtements' },
+    { id: 'hair', name: 'Cheveux' },
+  ],
+  colors: [
+    picked('1', '#e0a080', 'face', { x: 0.5, y: 0.2 }),
+    picked('2', '#b0120f', 'cloth', { x: 0.4, y: 0.7 }),
+    picked('3', '#c08060', 'face', { x: 0.52, y: 0.22 }),
+    picked('4', '#2050a0', null),
+  ],
 };
 
 describe('exports', () => {
@@ -21,22 +24,22 @@ describe('exports', () => {
     expect(baseName('***.webp')).toBe('palette');
   });
 
-  it('écrit une couleur par ligne avec hex, oklch et part', () => {
-    const lines = paletteText(card).split('\n');
-    expect(lines[0]).toMatch(/^#2f6b2a {2}oklch\([\d.]+ [\d.]+ [\d.]+\) {2}60\.0 %$/);
-    expect(lines[2]).toContain('accent');
-    expect(lines.slice(-2)).toEqual(['Épinglées :', expect.stringMatching(/^#d8c27a {2}oklch\(/)]);
+  it('écrit les couleurs par catégorie, sans les catégories vides', () => {
+    const text = paletteText(card);
+    const blocks = text.split('\n\n').map((b) => b.split('\n'));
+    expect(blocks.map((b) => b[0])).toEqual(['Visage :', 'Vêtements :', 'Sans catégorie :']);
+    expect(blocks[0].slice(1)).toEqual([
+      expect.stringMatching(/^#e0a080 {2}oklch\([\d.]+ [\d.]+ [\d.]+\)$/),
+      expect.stringMatching(/^#c08060 /),
+    ]);
   });
 
-  it('exporte un JSON relisible avec la palette et les harmonies', () => {
-    const data = JSON.parse(paletteJson(card, new Date('2026-10-22T12:00:00Z')));
-    expect(data.exportedAt).toBe('2026-10-22T12:00:00.000Z');
-    expect(data.wheel).toBe('rgb');
-    expect(data.palette.map((c: { hex: string }) => c.hex)).toEqual(['#2f6b2a', '#8fae4b', '#b0120f']);
-    expect(data.palette[2].accent).toBe(true);
-    expect(data.palette[0].accent).toBeUndefined();
-    expect(data.pinned).toHaveLength(1);
+  it('exporte un JSON relisible avec catégories, positions et harmonies', () => {
+    const data = JSON.parse(paletteJson(card, new Date('2026-10-24T12:00:00Z')));
+    expect(data.exportedAt).toBe('2026-10-24T12:00:00.000Z');
+    expect(data.categories.map((c: { name: string }) => c.name)).toEqual(['Visage', 'Vêtements', 'Sans catégorie']);
+    expect(data.categories[0].colors[0]).toMatchObject({ hex: '#e0a080', at: { x: 0.5, y: 0.2 } });
+    expect(data.categories[2].colors[0].at).toBeUndefined();
     expect(data.harmony.ranking).toHaveLength(7);
-    expect(data.harmony.closest).toBe(data.harmony.reliable ? data.harmony.ranking[0].type : null);
   });
 });

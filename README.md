@@ -1,6 +1,8 @@
 # Testeur d'harmonies de couleurs
 
-Outil web perso pour peintres de figurines : on charge une image, l'app en extrait les couleurs dominantes (hex, OKLCH), génère des harmonies à partir d'une couleur de base sur la roue RVB et indique de quelle harmonie l'image se rapproche. Tout est traité dans le navigateur, aucune image n'est envoyée à un serveur.
+Outil web perso pour peintres de figurines : on importe une image, on prélève des couleurs à la pipette (avec une loupe) et on les range dans des catégories qu'on nomme soi-même (visage, vêtements…). Au verso de la carte, la roue RVB place ces couleurs, indique l'harmonie la plus proche et génère des compositions. Les images et leurs catégories s'enregistrent dans le navigateur et s'exportent en texte, PNG ou JSON. Tout est traité dans le navigateur, aucune image n'est envoyée à un serveur.
+
+Depuis le 24/10, la palette automatique n'est plus affichée : le moteur d'extraction (`src/engine/extract.ts`) reste disponible mais l'app ne l'utilise plus. L'analyse d'harmonie compte chaque couleur prélevée à poids égal.
 
 Le cahier des charges est dans [BRIEF.md](BRIEF.md).
 
@@ -21,7 +23,10 @@ npm run build   # vérification TypeScript + build de production
   - `wheel.ts` + `rybTable.json` : roues RJB et RVB. La roue RJB est une table de correspondance modifiable (angle RJB → teinte OKLCH, interpolation linéaire).
   - `harmonies.ts` : complémentaire, split-complémentaire, triadique, tétradique, carré, analogue, monochrome.
   - `analysis.ts` : score d'harmonie d'une palette (voir ci-dessous).
-- `src/lib/export.ts` : exports d'une carte, sans serveur : palette en texte (presse-papiers), carte palette PNG (canvas) et JSON (palette, épinglées, classement des harmonies).
+- `src/lib/cards.ts` : couleurs prélevées et catégories (ajout, déplacement, suppression, regroupement).
+- `src/lib/loadImage.ts` : chargement de l'image (réduite à 1600 px pour la pipette) et conversion d'un point de l'écran en pixel.
+- `src/lib/store.ts` : enregistrement local (IndexedDB) derrière une interface, prêt pour Firestore. Les enregistrements de la première version sont repris dans des catégories « Palette auto » et « Épinglées ».
+- `src/lib/export.ts` : exports par catégorie, sans serveur : texte (presse-papiers), carte PNG avec les repères de prélèvement, JSON.
 - `src/i18n/fr.ts` : chaînes de l'interface.
 
 ## Table RJB (non utilisée par l'app)

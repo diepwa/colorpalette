@@ -152,6 +152,7 @@ button:focus-visible {
 }
 
 .card {
+  position: relative;
   height: 100%;
   display: flex;
   flex-direction: column;
@@ -164,22 +165,92 @@ button:focus-visible {
 .card-image {
   position: relative;
   flex: 1 1 auto;
-  min-height: 34%;
+  min-height: 40%;
   background: #111;
+  overflow: hidden;
+}
+
+.card-image.editing {
   cursor: crosshair;
+  box-shadow: inset 0 0 0 2px #ffd54a;
 }
 
 .card-image img {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
   display: block;
+  pointer-events: none;
+}
+
+/* Repère d'une couleur prélevée sur l'image */
+.marker {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  margin: -7px 0 0 -7px;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.6);
+  pointer-events: none;
+}
+
+.marker.selected {
+  width: 22px;
+  height: 22px;
+  margin: -11px 0 0 -11px;
+  border-width: 3px;
+}
+
+/* Loupe de la pipette */
+.loupe {
+  position: absolute;
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.loupe canvas {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  border: 3px solid #fff;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.6);
+  image-rendering: pixelated;
+}
+
+.loupe-hex {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(0, 0, 0, 0.75);
+  color: #fff;
+  border-radius: 6px;
+  padding: 2px 8px;
+  font: 500 0.8rem var(--mono);
+}
+
+.edit-banner {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  max-width: calc(100% - 150px);
+  background: #ffd54a;
+  color: #1e1e1e;
+  border-radius: 8px;
+  padding: 4px 10px;
+  font-size: 0.78rem;
+  font-weight: 600;
   pointer-events: none;
 }
 
 .card-status {
   position: absolute;
-  inset: auto 12px 12px;
+  top: 40%;
+  left: 12px;
+  right: 12px;
   background: rgba(0, 0, 0, 0.6);
   border-radius: 8px;
   padding: 6px 10px;
@@ -187,12 +258,21 @@ button:focus-visible {
   text-align: center;
 }
 
-.card-palette {
-  flex: 0 0 auto;
+.card-panel {
+  flex: 0 1 auto;
+  max-height: 52%;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
   padding: 12px 14px;
   display: grid;
-  gap: 8px;
+  gap: 10px;
   align-content: start;
+}
+
+.color-group {
+  display: grid;
+  gap: 6px;
 }
 
 .palette-title {
@@ -222,15 +302,19 @@ button:focus-visible {
 
 .swatch-chip {
   display: block;
-  height: 26px;
+  width: 100%;
+  height: 30px;
+  border: 0;
+  padding: 0;
   border-radius: 5px;
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+  cursor: pointer;
 }
 
-.swatch-text {
-  display: grid;
-  min-width: 0;
+.swatch.selected .swatch-chip {
+  box-shadow: 0 0 0 2px var(--text);
 }
+
 
 .swatch-hex {
   background: none;
@@ -245,34 +329,7 @@ button:focus-visible {
   text-decoration: underline;
 }
 
-.swatch-meta {
-  display: flex;
-  gap: 4px;
-  align-items: center;
-  flex-wrap: nowrap;
-  white-space: nowrap;
-  font: 0.68rem var(--mono);
-  color: var(--text-muted);
-  font-variant-numeric: tabular-nums;
-}
 
-.swatch-chip {
-  position: relative;
-}
-
-/* Étiquette posée sur l'échantillon, lisible sur toutes les couleurs. */
-.swatch-tag {
-  position: absolute;
-  left: 3px;
-  bottom: 3px;
-  background: rgba(0, 0, 0, 0.55);
-  color: #fff;
-  border-radius: 3px;
-  padding: 0 4px;
-  font: 600 0.56rem/1.5 var(--mono);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
 
 .swatch-remove {
   position: absolute;
@@ -598,4 +655,115 @@ button:focus-visible {
   padding: 3px 12px;
   font-size: 0.78rem;
   cursor: pointer;
+}
+
+/* Catégories (mode édition) */
+.category-bar {
+  display: grid;
+  gap: 6px;
+}
+
+.category-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.category-chips button {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 5px 12px;
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+
+.category-chips button[aria-pressed='true'] {
+  background: #ffd54a;
+  color: #1e1e1e;
+  border-color: #ffd54a;
+}
+
+.category-chips .add-category {
+  border-style: dashed;
+  background: none;
+  color: var(--text-muted);
+}
+
+.category-line {
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 12px;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.category-line span {
+  flex: 1;
+}
+
+.link {
+  background: none;
+  border: 0;
+  padding: 0;
+  font-size: 0.75rem;
+  text-decoration: underline;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.category-form {
+  display: flex;
+  gap: 6px;
+}
+
+.category-form input {
+  flex: 1;
+  min-width: 0;
+  font: inherit;
+  font-size: 16px; /* évite le zoom automatique d'iOS */
+  color: var(--text);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 4px 10px;
+}
+
+.category-form button,
+.move-row select {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 4px 10px;
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+
+.category-form button:disabled {
+  opacity: 0.4;
+}
+
+.move-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.move-row select {
+  color: var(--text);
+  font: inherit;
+  font-size: 0.82rem;
+}
+
+.back-empty {
+  margin: auto 0;
+  text-align: center;
+  color: var(--text-muted);
 }

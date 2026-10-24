@@ -1,4 +1,5 @@
-import type { PaletteColor } from '../engine';
+import { fr } from '../i18n/fr';
+import type { Category, PickedColor } from '../types';
 
 /**
  * Image enregistrée. Le stockage passe par cette interface pour pouvoir
@@ -10,8 +11,40 @@ export interface SavedImage {
   savedAt: number;
   /** Image réduite (JPEG), pour l'affichage et la pipette. */
   blob: Blob;
-  palette: PaletteColor[];
-  pinned: PaletteColor[];
+  categories: Category[];
+  colors: PickedColor[];
+}
+
+/** Enregistrement de la première version : palette automatique et couleurs épinglées. */
+interface LegacySavedImage {
+  id: string;
+  name: string;
+  savedAt: number;
+  blob: Blob;
+  palette?: { hex: string; lab: PickedColor['lab']; lch: PickedColor['lch'] }[];
+  pinned?: { hex: string; lab: PickedColor['lab']; lch: PickedColor['lch'] }[];
+}
+
+/**
+ * Remet un enregistrement au format actuel. Les couleurs de la première version
+ * sont gardées dans deux catégories, sans position sur l'image.
+ */
+export function normalizeSaved(raw: SavedImage | LegacySavedImage): SavedImage {
+  if ('colors' in raw && Array.isArray(raw.colors)) return raw;
+  const legacy = raw as LegacySavedImage;
+  const categories: Category[] = [];
+  const colors: PickedColor[] = [];
+  const keep = (name: string, list: LegacySavedImage['palette']) => {
+    if (!list?.length) return;
+    const category = { id: `${legacy.id}-${categories.length}`, name };
+    categories.push(category);
+    list.forEach((c, i) =>
+      colors.push({ id: `${category.id}-${i}`, hex: c.hex, lab: c.lab, lch: c.lch, categoryId: category.id }),
+    );
+  };
+  keep(fr.legacyPalette, legacy.palette);
+  keep(fr.legacyPinned, legacy.pinned);
+  return { id: legacy.id, name: legacy.name, savedAt: legacy.savedAt, blob: legacy.blob, categories, colors };
 }
 
 export interface ImageStore {
@@ -47,8 +80,8 @@ export function createIndexedDbStore(factory: IDBFactory = indexedDB): ImageStor
 
   return {
     async list() {
-      const all = await request((await tx('readonly')).getAll() as IDBRequest<SavedImage[]>);
-      return all.sort((a, b) => b.savedAt - a.savedAt);
+      const all = await request((await tx('readonly')).getAll() as IDBRequest<(SavedImage | LegacySavedImage)[]>);
+      return all.map(normalizeSaved).sort((a, b) => b.savedAt - a.savedAt);
     },
     async put(image) {
       await request((await tx('readwrite')).put(image));
