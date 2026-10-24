@@ -1,11 +1,9 @@
-import { useState } from 'react';
 import { addCategory, groupByCategory, moveColor, removeCategory, removeColor, renameCategory } from '../lib/cards';
 import { fr } from '../i18n/fr';
 import type { ImageCard, ImagePoint } from '../types';
 import { CategoryBar } from './CategoryBar';
 import { ColorChip } from './ColorChip';
 import { ImagePicker } from './ImagePicker';
-import { Transition } from './Transition';
 
 export type ExportKind = 'text' | 'png' | 'json';
 
@@ -30,15 +28,6 @@ export function Card(props: Props) {
   const { card, editing, selectedId, onSelect, onChange, onCopy } = props;
   const groups = groupByCategory(card);
   const selected = card.colors.find((c) => c.id === selectedId);
-  // Transition : null = fermée, sinon les deux couleurs choisies (dans l'ordre).
-  const [transition, setTransition] = useState<string[] | null>(null);
-  const pair = transition?.map((id) => card.colors.find((c) => c.id === id)).filter((c) => c !== undefined) ?? [];
-
-  const tapColor = (id: string) => {
-    if (!transition) return onSelect(id === selectedId ? null : id);
-    if (transition.includes(id)) setTransition(transition.filter((k) => k !== id));
-    else setTransition(transition.length < 2 ? [...transition, id] : [transition[0], id]);
-  };
 
   return (
     <article className="card" aria-label={card.name}>
@@ -46,7 +35,7 @@ export function Card(props: Props) {
         card={card}
         editing={editing}
         showMarkers={props.showMarkers}
-        selectedId={transition ? null : selectedId}
+        selectedId={selectedId}
         onPick={props.onPick}
       />
       {card.status === 'loading' && <div className="card-status">{fr.loading}</div>}
@@ -104,24 +93,6 @@ export function Card(props: Props) {
             />
           )}
 
-          {transition && pair.length === 2 && (
-            <Transition
-              from={pair[0]}
-              to={pair[1]}
-              onSwap={() => setTransition([transition[1], transition[0]])}
-              onClose={() => setTransition(null)}
-              onCopy={onCopy}
-            />
-          )}
-          {transition && pair.length < 2 && (
-            <p className="transition-hint">
-              {pair.length === 0 ? fr.transitionPickFirst : fr.transitionPickSecond}
-              <button type="button" className="link" onClick={() => setTransition(null)}>
-                {fr.cancel}
-              </button>
-            </p>
-          )}
-
           {groups.length === 0 && <p className="card-foot">{editing ? fr.noColorsEditing : fr.noColors}</p>}
           {groups.map((g) => (
             <section key={g.category?.id ?? 'none'} className="color-group">
@@ -131,9 +102,8 @@ export function Card(props: Props) {
                   <ColorChip
                     key={c.id}
                     color={c}
-                    selected={!transition && c.id === selectedId}
-                    badge={transition && transition.includes(c.id) ? String(transition.indexOf(c.id) + 1) : undefined}
-                    onSelect={() => tapColor(c.id)}
+                    selected={c.id === selectedId}
+                    onSelect={() => onSelect(c.id === selectedId ? null : c.id)}
                     onCopy={onCopy}
                     onRemove={editing ? () => onChange(removeColor(card, c.id)) : undefined}
                   />
@@ -142,7 +112,7 @@ export function Card(props: Props) {
             </section>
           ))}
 
-          {editing && !transition && selected && card.categories.length > 0 && (
+          {editing && selected && card.categories.length > 0 && (
             <label className="move-row">
               <span className="mini" style={{ background: selected.hex }} />
               {fr.moveTo}
@@ -162,16 +132,6 @@ export function Card(props: Props) {
 
           {card.colors.length > 0 && (
             <div className="export-row" role="group" aria-label={fr.exportGroup}>
-              {card.colors.length > 1 && (
-                <button
-                  type="button"
-                  title={fr.transitionTitle}
-                  aria-pressed={transition !== null}
-                  onClick={() => setTransition(transition ? null : selected ? [selected.id] : [])}
-                >
-                  {fr.transition}
-                </button>
-              )}
               <button type="button" title={fr.copyPaletteTitle} onClick={() => props.onExport('text')}>
                 {fr.copyPalette}
               </button>

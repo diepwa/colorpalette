@@ -514,9 +514,9 @@ button:focus-visible {
 .wheel {
   width: 100%;
   max-width: 280px;
-  max-height: 40vh;
+  max-height: 36vh;
   align-self: center;
-  flex: 0 1 auto;
+  flex: 0 0 auto;
   min-height: 0;
 }
 
@@ -745,7 +745,39 @@ button:focus-visible {
   color: var(--text-muted);
 }
 
-/* Transition entre deux couleurs */
+/* Passage entre couleurs (verso) */
+.wheel-point {
+  cursor: pointer;
+}
+
+.wheel-point:focus,
+.wheel-point:focus-visible {
+  outline: none;
+}
+
+.wheel-point:focus-visible circle:last-of-type {
+  stroke: #ffd54a;
+}
+
+.wheel-badge {
+  font: 700 11px var(--font);
+  fill: #fff;
+  paint-order: stroke;
+  stroke: rgba(0, 0, 0, 0.8);
+  stroke-width: 3px;
+  pointer-events: none;
+}
+
+.path-segment {
+  display: grid;
+  gap: 6px;
+}
+
+.path-label {
+  font: 600 0.75rem var(--mono);
+  color: var(--text-muted);
+}
+
 .swatch-chip {
   position: relative;
 }
@@ -765,20 +797,6 @@ button:focus-visible {
 
 .export-row {
   flex-wrap: wrap;
-}
-
-.export-row button[aria-pressed='true'] {
-  background: var(--text);
-  color: var(--bg);
-}
-
-.transition-hint {
-  margin: 0;
-  display: flex;
-  gap: 12px;
-  align-items: baseline;
-  font-size: 0.82rem;
-  color: #ffd54a;
 }
 
 .transition {
@@ -822,13 +840,22 @@ button:focus-visible {
   margin: 0;
   padding: 0;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(64px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(54px, 1fr));
   gap: 8px;
 }
 
 .transition-steps-list li {
   display: grid;
   gap: 2px;
+  min-width: 0;
+}
+
+.transition-steps-list .swatch-hex {
+  font-size: 0.7rem;
+}
+
+.transition-steps-list .composition-chip {
+  height: 32px;
 }
 
 .transition-mix {

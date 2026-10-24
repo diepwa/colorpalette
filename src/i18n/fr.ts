@@ -33,19 +33,6 @@ export const fr = {
   zoomOut: 'Dézoomer',
   zoomReset: 'Revenir à l’image entière',
 
-  // Transition entre deux couleurs
-  transition: '◐ Transition',
-  transitionTitle: 'Voir la transition entre deux couleurs',
-  transitionPickFirst: 'Touche la couleur de départ',
-  transitionPickSecond: 'Touche la couleur d’arrivée',
-  transitionHeading: 'Transition',
-  transitionSteps: 'Nuances',
-  transitionSwap: 'Inverser',
-  transitionClose: 'Fermer',
-  transitionMix: (a: number, b: number) => `${a} / ${b}`,
-  transitionNote:
-    'Proportions « couleur 1 / couleur 2 » pour chaque nuance. Le calcul suit la perception à l’écran : avec de vrais pigments, ajuste à l’œil.',
-
   // Catégories
   defaultCategories: ['Visage', 'Vêtements'],
   categoryGroup: 'Catégories',
@@ -78,7 +65,16 @@ export const fr = {
   backEmpty: 'Prélève des couleurs sur l’image pour les voir sur la roue.',
   allCategories: 'Toutes',
   wheelLabel: (n: number) => `Roue RVB avec ${n} couleur${n > 1 ? 's' : ''} prélevée${n > 1 ? 's' : ''}`,
-  wheelHint: 'Teinte autour de la roue, saturation du centre (gris) vers le bord (couleur pure).',
+  wheelHint: 'Teinte autour de la roue, saturation du centre (gris) vers le bord. Touche plusieurs couleurs pour voir le passage de l’une à l’autre.',
+  pathHeading: 'Passage',
+  pathPickMore: 'Touche une deuxième couleur, sur la roue ou dans la liste.',
+  pathSteps: 'Nuances',
+  pathClear: 'Effacer',
+  pathSegment: (a: number, b: number) => `${a} → ${b}`,
+  pathMix: (a: number, b: number) => `${a} / ${b}`,
+  pathNote:
+    'Proportions de mélange « couleur de départ / couleur d’arrivée ». Le calcul suit ce que l’œil voit à l’écran : avec de vrais pigments, ajuste à l’œil.',
+  toggleColor: (hex: string, n: number | null) => (n ? `Retirer ${hex} du passage (n° ${n})` : `Ajouter ${hex} au passage`),
 
   // Exports
   exportGroup: 'Exporter',
