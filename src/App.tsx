@@ -3,18 +3,20 @@ import { fr } from './i18n/fr';
 import { addColor, defaultCategories } from './lib/cards';
 import { baseName, download, paletteCardPng, paletteJson, paletteText } from './lib/export';
 import { encodeJpeg, isAcceptedImage, loadImage, pixelAt } from './lib/loadImage';
-import { createIndexedDbStore, type SavedImage } from './lib/store';
+import { createFirestoreStore } from './lib/firestoreStore';
+import { createIndexedDbStore, type ImageStore, type SavedImage } from './lib/store';
+import { useAccount } from './lib/useAccount';
 import { useSwipe } from './lib/useSwipe';
 import { Card, type ExportKind } from './components/Card';
 import { CardBack } from './components/CardBack';
 import type { ImageCard, ImagePoint } from './types';
 
-const store = createIndexedDbStore();
+const localStore = createIndexedDbStore();
 
 type View = 'session' | 'saved';
 
-/** Enregistre (ou met à jour) une carte dans la bibliothèque locale. */
-async function persist(card: ImageCard) {
+/** Enregistre (ou met à jour) une carte dans la bibliothèque (locale, ou Firestore une fois connecté). */
+async function persist(store: ImageStore, card: ImageCard) {
   const blob = card.blob ?? (card.pixels ? await encodeJpeg(card.pixels) : null);
   if (!blob) throw new Error('Image pas encore prête');
   const savedAt = card.savedAt ?? Date.now();
@@ -34,6 +36,8 @@ export default function App() {
   const [dropping, setDropping] = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
   const toastTimer = useRef<number | undefined>(undefined);
+  const { account, signIn, signOut } = useAccount();
+  const [cloud, setCloud] = useState<{ uid: string; store: ImageStore } | null>(null);
 
   const showToast = useCallback((msg: string) => {
     setToast(msg);
@@ -50,13 +54,37 @@ export default function App() {
   const setIndex = (next: number | ((i: number) => number)) =>
     setIndices((all) => ({ ...all, [view]: typeof next === 'function' ? next(Math.min(all[view], Math.max(0, visible.length - 1))) : next }));
 
-  // Bibliothèque locale chargée au démarrage ; les pixels (pipette) sont décodés ensuite.
+  // Connecté : Firestore devient la bibliothèque, et les images enregistrées localement y sont transférées.
+  const uid = account.status === 'signedIn' ? account.uid : null;
+  const db = account.status === 'signedIn' ? account.db : null;
+  const store = cloud && cloud.uid === uid ? cloud.store : localStore;
+  useEffect(() => {
+    if (!uid || !db) return;
+    let cancelled = false;
+    void (async () => {
+      const remote = await createFirestoreStore(db, uid);
+      const local = await localStore.list().catch(() => [] as SavedImage[]);
+      for (const image of local) {
+        await remote.put(image);
+        await localStore.remove(image.id);
+      }
+      if (cancelled) return;
+      if (local.length > 0) showToast(fr.migrated(local.length));
+      setCloud({ uid, store: remote });
+    })().catch(() => showToast(fr.cloudFailed));
+    return () => {
+      cancelled = true;
+    };
+  }, [uid, db, showToast]);
+
+  // Bibliothèque chargée au démarrage et à chaque changement de stockage ; les pixels (pipette) sont décodés ensuite.
   useEffect(() => {
     let cancelled = false;
     store
       .list()
       .then((saved: SavedImage[]) => {
         if (cancelled) return;
+        const ids = new Set(saved.map((s) => s.id));
         const loaded: ImageCard[] = saved.map((s) => ({
           id: s.id,
           name: s.name,
@@ -71,7 +99,14 @@ export default function App() {
           origin: 'library',
           savedAt: s.savedAt,
         }));
-        setCards((cs) => [...cs, ...loaded]);
+        setCards((cs) => {
+          // Les images de la session déjà présentes dans la bibliothèque y restent marquées enregistrées.
+          const session = cs
+            .filter((c) => c.origin === 'session')
+            .map((c) => ({ ...c, saved: ids.has(c.id), savedAt: ids.has(c.id) ? c.savedAt : undefined }));
+          const inSession = new Set(session.map((c) => c.id));
+          return [...session, ...loaded.filter((c) => !inSession.has(c.id))];
+        });
         for (const s of saved) {
           void loadImage(s.blob).then(({ pixels }) => updateCard(s.id, { pixels }));
         }
@@ -82,7 +117,7 @@ export default function App() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [store]);
 
   const toggleSave = async (card: ImageCard) => {
     try {
@@ -91,7 +126,7 @@ export default function App() {
         updateCard(card.id, { saved: false, savedAt: undefined });
         showToast(fr.unsaved);
       } else {
-        const { blob, savedAt } = await persist(card);
+        const { blob, savedAt } = await persist(store, card);
         updateCard(card.id, { saved: true, blob, savedAt });
         showToast(fr.saved);
       }
@@ -104,7 +139,7 @@ export default function App() {
   const changeCard = (card: ImageCard, patch: Partial<ImageCard>) => {
     updateCard(card.id, patch);
     if (card.saved && ('colors' in patch || 'categories' in patch)) {
-      void persist({ ...card, ...patch }).catch(() => showToast(fr.saveFailed));
+      void persist(store, { ...card, ...patch }).catch(() => showToast(fr.saveFailed));
     }
   };
 
@@ -247,6 +282,22 @@ export default function App() {
         <button type="button" className="add" onClick={() => fileInput.current?.click()}>
           {fr.addImages}
         </button>
+        {account.status === 'signedOut' && (
+          <button type="button" className="add" onClick={() => void signIn().catch(() => showToast(fr.signInFailed))}>
+            {fr.signIn}
+          </button>
+        )}
+        {account.status === 'signedIn' && (
+          <button
+            type="button"
+            className="account"
+            title={fr.signedInAs(account.name)}
+            aria-label={fr.signOut}
+            onClick={() => window.confirm(fr.confirmSignOut(account.name)) && void signOut()}
+          >
+            {(account.name.trim()[0] ?? '?').toUpperCase()}
+          </button>
+        )}
         <input
           ref={fileInput}
           type="file"
@@ -282,7 +333,7 @@ export default function App() {
           ) : (
             <div className="empty-box">
               <h2>{fr.savedEmptyTitle}</h2>
-              <p>{fr.savedEmptyBody}</p>
+              <p>{account.status === 'signedIn' ? fr.savedEmptyBodyCloud : fr.savedEmptyBody}</p>
             </div>
           )}
         </main>

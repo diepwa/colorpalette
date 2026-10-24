@@ -59,6 +59,16 @@ export const fr = {
   tabSaved: (n: number) => `Enregistrées (${n})`,
   savedEmptyTitle: 'Aucune image enregistrée',
   savedEmptyBody: 'Touche ☆ sur une carte pour la garder ici. Les images restent dans ce navigateur.',
+  savedEmptyBodyCloud: 'Touche ☆ sur une carte pour la garder ici. Elle est enregistrée dans ton compte et retrouvée sur tes autres appareils.',
+
+  // Compte (Firestore)
+  signIn: 'Connexion',
+  signOut: 'Se déconnecter',
+  signedInAs: (name: string) => `Connecté : ${name}`,
+  confirmSignOut: (name: string) => `Se déconnecter de ${name} ? Les images enregistrées restent dans ton compte.`,
+  signInFailed: 'Connexion impossible',
+  cloudFailed: 'Bibliothèque en ligne indisponible',
+  migrated: (n: number) => `${n} image${n > 1 ? 's' : ''} transférée${n > 1 ? 's' : ''} dans ton compte`,
 
   // Verso
   backTitle: 'Roue RVB',

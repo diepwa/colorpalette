@@ -88,6 +88,18 @@ button:focus-visible {
   font-weight: 600;
 }
 
+.account {
+  width: 30px;
+  height: 30px;
+  flex: none;
+  border-radius: 50%;
+  border: 0;
+  background: #ffd54a;
+  color: #1e1e1e;
+  font-weight: 700;
+  cursor: pointer;
+}
+
 /* État vide */
 .empty {
   flex: 1;
