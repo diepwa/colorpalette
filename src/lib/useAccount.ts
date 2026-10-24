@@ -10,7 +10,7 @@ export type Account =
 
 const config = firebaseConfig();
 
-/** Connexion Google à Firebase. Sans configuration, le compte reste désactivé et l'app travaille en local. */
+/** Connexion à Firebase par email et mot de passe. Sans configuration, le compte reste désactivé et l'app travaille en local. */
 export function useAccount() {
   const [account, setAccount] = useState<Account>(config ? { status: 'loading' } : { status: 'disabled' });
 
@@ -44,18 +44,16 @@ export function useAccount() {
     };
   }, []);
 
-  const signIn = async () => {
+  const signIn = async (email: string, password: string) => {
     if (!config) return;
-    const { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect } = await import('firebase/auth');
-    const auth = getAuth(await firebaseApp(config));
-    const provider = new GoogleAuthProvider();
-    try {
-      await signInWithPopup(auth, provider);
-    } catch (e) {
-      // Fenêtre bloquée (mobile, navigateur strict) : on passe par une redirection.
-      if ((e as { code?: string }).code === 'auth/popup-blocked') await signInWithRedirect(auth, provider);
-      else throw e;
-    }
+    const { getAuth, signInWithEmailAndPassword } = await import('firebase/auth');
+    await signInWithEmailAndPassword(getAuth(await firebaseApp(config)), email.trim(), password);
+  };
+
+  const resetPassword = async (email: string) => {
+    if (!config) return;
+    const { getAuth, sendPasswordResetEmail } = await import('firebase/auth');
+    await sendPasswordResetEmail(getAuth(await firebaseApp(config)), email.trim());
   };
 
   const signOut = async () => {
@@ -64,5 +62,5 @@ export function useAccount() {
     await signOut(getAuth(await firebaseApp(config)));
   };
 
-  return { account, signIn, signOut };
+  return { account, signIn, resetPassword, signOut };
 }

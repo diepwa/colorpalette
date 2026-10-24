@@ -884,3 +884,71 @@ button:focus-visible {
   min-height: 0;
   touch-action: pan-y;
 }
+
+/* Fenêtre de connexion */
+.dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgba(0, 0, 0, 0.6);
+  z-index: 10;
+}
+
+.dialog {
+  width: 100%;
+  max-width: 360px;
+  display: grid;
+  gap: 12px;
+  background: var(--surface);
+  border-radius: 16px;
+  padding: 20px;
+  box-shadow: 0 0 0 1px var(--border);
+}
+
+.dialog h2 {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.dialog label {
+  display: grid;
+  gap: 4px;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+
+.dialog input {
+  font: inherit;
+  font-size: 16px; /* évite le zoom automatique d'iOS */
+  color: var(--text);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 10px;
+}
+
+.dialog-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.dialog-actions .link {
+  margin-right: auto;
+}
+
+.dialog-error,
+.dialog-info {
+  margin: 0;
+  font-size: 0.82rem;
+}
+
+.dialog-error {
+  color: #ff8a8a;
+}
+
+.dialog-info {
+  color: #8fd18f;
+}

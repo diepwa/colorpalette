@@ -66,14 +66,25 @@ export const fr = {
   signOut: 'Se déconnecter',
   signedInAs: (name: string) => `Connecté : ${name}`,
   confirmSignOut: (name: string) => `Se déconnecter de ${name} ? Les images enregistrées restent dans ton compte.`,
-  signInError: (code: string | undefined, host: string) =>
-    code === 'auth/unauthorized-domain'
-      ? `Connexion refusée : ajoute « ${host} » dans Firebase > Authentication > Paramètres > Domaines autorisés`
-      : code === 'auth/operation-not-allowed'
-        ? 'Connexion Google pas encore activée dans Firebase > Authentication'
-        : code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request'
-          ? 'Connexion annulée'
-          : `Connexion impossible${code ? ` (${code})` : ''}`,
+  signInTitle: 'Connexion à ta bibliothèque',
+  email: 'Email',
+  password: 'Mot de passe',
+  signingIn: 'Connexion…',
+  forgotPassword: 'Mot de passe oublié ?',
+  resetNeedsEmail: 'Indique d’abord ton email.',
+  resetSent: (email: string) => `Email de réinitialisation envoyé à ${email}.`,
+  signInError: (code: string | undefined) =>
+    code === 'auth/invalid-credential' || code === 'auth/wrong-password' || code === 'auth/user-not-found'
+      ? 'Email ou mot de passe incorrect.'
+      : code === 'auth/invalid-email'
+        ? 'Adresse email invalide.'
+        : code === 'auth/too-many-requests'
+          ? 'Trop d’essais : réessaie dans quelques minutes.'
+          : code === 'auth/network-request-failed'
+            ? 'Pas de connexion internet.'
+            : code === 'auth/operation-not-allowed'
+              ? 'Connexion par email pas activée dans Firebase > Authentication.'
+              : `Connexion impossible${code ? ` (${code})` : ''}.`,
   cloudFailed: 'Bibliothèque en ligne indisponible',
   migrated: (n: number) => `${n} image${n > 1 ? 's' : ''} transférée${n > 1 ? 's' : ''} dans ton compte`,
 

@@ -9,6 +9,7 @@ import { useAccount } from './lib/useAccount';
 import { useSwipe } from './lib/useSwipe';
 import { Card, type ExportKind } from './components/Card';
 import { CardBack } from './components/CardBack';
+import { SignInDialog } from './components/SignInDialog';
 import type { ImageCard, ImagePoint } from './types';
 
 const localStore = createIndexedDbStore();
@@ -36,7 +37,8 @@ export default function App() {
   const [dropping, setDropping] = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
   const toastTimer = useRef<number | undefined>(undefined);
-  const { account, signIn, signOut } = useAccount();
+  const { account, signIn, resetPassword, signOut } = useAccount();
+  const [signingIn, setSigningIn] = useState(false);
   const [cloud, setCloud] = useState<{ uid: string; store: ImageStore } | null>(null);
 
   const showToast = useCallback((msg: string) => {
@@ -283,7 +285,7 @@ export default function App() {
           {fr.addImages}
         </button>
         {account.status === 'signedOut' && (
-          <button type="button" className="add" onClick={() => void signIn().catch((e: { code?: string }) => showToast(fr.signInError(e.code, location.hostname)))}>
+          <button type="button" className="add" onClick={() => setSigningIn(true)}>
             {fr.signIn}
           </button>
         )}
@@ -390,6 +392,9 @@ export default function App() {
       )}
 
       {dropping && <div className="drop-overlay">{fr.dropHint}</div>}
+      {signingIn && (
+        <SignInDialog onSignIn={signIn} onResetPassword={resetPassword} onClose={() => setSigningIn(false)} />
+      )}
       {toast && (
         <div className="toast" role="status">
           {toast}
