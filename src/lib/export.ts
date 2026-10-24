@@ -1,12 +1,12 @@
-import { analyzeHarmony, type PaletteColor } from '../engine';
 import { fr } from '../i18n/fr';
-import type { ImageCard } from '../types';
+import type { ImageCard, PickedColor } from '../types';
+import { groupByCategory } from './cards';
 
-type Exportable = Pick<ImageCard, 'name' | 'palette' | 'pinned'>;
+type Exportable = Pick<ImageCard, 'name' | 'categories' | 'colors'>;
 
 const round = (n: number, d: number) => Number(n.toFixed(d));
-const oklchCss = (c: PaletteColor) => `oklch(${round(c.lch.L, 3)} ${round(c.lch.C, 3)} ${round(c.lch.h, 1)})`;
-const pct = (p: number) => `${(p * 100).toFixed(1)} %`;
+const oklchCss = (c: PickedColor) => `oklch(${round(c.lch.L, 3)} ${round(c.lch.C, 3)} ${round(c.lch.h, 1)})`;
+const groupName = (name: string | undefined) => name ?? fr.noCategory;
 
 /** Nom de fichier sans extension ni caractères gênants. */
 export function baseName(name: string): string {
@@ -14,50 +14,29 @@ export function baseName(name: string): string {
   return stem.replace(/[^\p{L}\p{N}._-]+/gu, '-').replace(/^-+|-+$/g, '') || 'palette';
 }
 
-/** Harmonie la plus proche, ou null si l'image est surtout neutre. */
-function closestHarmony(card: Exportable) {
-  const analysis = analyzeHarmony(card.palette);
-  return { analysis, best: analysis.reliable ? analysis.ranking[0] : undefined };
-}
-
-/** Palette en texte, une couleur par ligne, prête à coller. */
+/** Couleurs en texte, regroupées par catégorie, prêtes à coller. */
 export function paletteText(card: Exportable): string {
-  const line = (c: PaletteColor, extra: string) => `${c.hex}  ${oklchCss(c)}  ${extra}`.trimEnd();
-  const lines = card.palette.map((c) => line(c, `${pct(c.proportion)}${c.accent ? `  ${fr.accent}` : ''}`));
-  if (card.pinned.length > 0) {
-    lines.push('', `${fr.pinnedTitle} :`, ...card.pinned.map((c) => line(c, '')));
-  }
-  return lines.join('\n');
+  return groupByCategory(card)
+    .map((g) => [`${groupName(g.category?.name)} :`, ...g.colors.map((c) => `${c.hex}  ${oklchCss(c)}`)].join('\n'))
+    .join('\n\n');
 }
 
-const colorJson = (c: PaletteColor) => ({
+const colorJson = (c: PickedColor) => ({
   hex: c.hex,
   oklch: { l: round(c.lch.L, 4), c: round(c.lch.C, 4), h: round(c.lch.h, 2) },
-  proportion: round(c.proportion, 4),
-  ...(c.accent ? { accent: true } : {}),
+  ...(c.at ? { at: { x: round(c.at.x, 4), y: round(c.at.y, 4) } } : {}),
 });
 
-/** Export JSON complet : palette, couleurs épinglées et classement des harmonies. */
+/** Export JSON : catégories avec leurs couleurs et l'endroit où elles ont été prises. */
 export function paletteJson(card: Exportable, exportedAt = new Date()): string {
-  const { analysis, best } = closestHarmony(card);
   return JSON.stringify(
     {
       name: card.name,
       exportedAt: exportedAt.toISOString(),
-      wheel: 'rgb',
-      palette: card.palette.map(colorJson),
-      pinned: card.pinned.map(colorJson),
-      harmony: {
-        reliable: analysis.reliable,
-        chromaticShare: round(analysis.chromaticShare, 3),
-        closest: best?.type ?? null,
-        ranking: analysis.ranking.map((r) => ({
-          type: r.type,
-          score: round(r.score, 3),
-          coverage: round(r.coverage, 3),
-          referenceHue: round(r.referenceHue, 1),
-        })),
-      },
+      categories: groupByCategory(card).map((g) => ({
+        name: groupName(g.category?.name),
+        colors: g.colors.map(colorJson),
+      })),
     },
     null,
     2,
@@ -66,23 +45,23 @@ export function paletteJson(card: Exportable, exportedAt = new Date()): string {
 
 const CARD_W = 1080;
 const PAD = 64;
+const COLS = 5;
+const GAP = 18;
+const CHIP_H = 96;
+const ROW_H = CHIP_H + 60;
+const TITLE_H = 56;
 
-/** Carte palette en PNG : l'image, les couleurs avec leurs hex et l'harmonie la plus proche. */
+/** Carte en PNG : l'image avec les repères des prélèvements, puis les couleurs par catégorie. */
 export async function paletteCardPng(card: Exportable & { blob?: Blob; url: string }): Promise<Blob> {
   const source = card.blob ?? (await (await fetch(card.url)).blob());
   const img = await createImageBitmap(source);
-  const { best } = closestHarmony(card);
-  const colors = [...card.palette, ...card.pinned];
+  const groups = groupByCategory(card);
 
   const imgW = CARD_W - PAD * 2;
-  const imgH = Math.round(Math.min(imgW * 0.75, (imgW * img.height) / img.width));
-  const cols = Math.min(4, Math.max(1, colors.length));
-  const gap = 20;
-  const chipW = (imgW - gap * (cols - 1)) / cols;
-  const chipH = 120;
-  const rowH = chipH + 96;
-  const rows = Math.ceil(colors.length / cols);
-  const height = PAD + 70 + imgH + 48 + rows * rowH + 60 + PAD;
+  const imgH = Math.round(Math.min(imgW * 1.1, (imgW * img.height) / img.width));
+  const chipW = (imgW - GAP * (COLS - 1)) / COLS;
+  const groupsH = groups.reduce((h, g) => h + TITLE_H + Math.ceil(g.colors.length / COLS) * ROW_H, 0);
+  const height = PAD + 70 + imgH + 32 + groupsH + PAD;
 
   const canvas = document.createElement('canvas');
   canvas.width = CARD_W;
@@ -92,48 +71,65 @@ export async function paletteCardPng(card: Exportable & { blob?: Blob; url: stri
 
   ctx.fillStyle = '#1e1e1e';
   ctx.fillRect(0, 0, CARD_W, height);
-  ctx.textBaseline = 'alphabetic';
 
   ctx.fillStyle = '#e6e6e6';
   ctx.font = '600 40px system-ui, sans-serif';
   ctx.fillText(fitText(ctx, card.name, imgW), PAD, PAD + 40);
 
-  // Image recadrée au centre (object-fit: cover).
-  const scale = Math.max(imgW / img.width, imgH / img.height);
-  const sw = imgW / scale;
-  const sh = imgH / scale;
+  // Image entière (contain), centrée dans sa zone.
+  const scale = Math.min(imgW / img.width, imgH / img.height);
+  const w = img.width * scale;
+  const h = img.height * scale;
+  const x0 = PAD + (imgW - w) / 2;
+  const y0 = PAD + 70 + (imgH - h) / 2;
   ctx.save();
-  roundRect(ctx, PAD, PAD + 70, imgW, imgH, 24);
+  roundRect(ctx, x0, y0, w, h, 20);
   ctx.clip();
-  ctx.drawImage(img, (img.width - sw) / 2, (img.height - sh) / 2, sw, sh, PAD, PAD + 70, imgW, imgH);
+  ctx.drawImage(img, x0, y0, w, h);
   ctx.restore();
   img.close();
+  for (const c of card.colors) {
+    if (!c.at) continue;
+    marker(ctx, x0 + c.at.x * w, y0 + c.at.y * h, c.hex);
+  }
 
-  const top = PAD + 70 + imgH + 48;
-  colors.forEach((c, i) => {
-    const x = PAD + (i % cols) * (chipW + gap);
-    const y = top + Math.floor(i / cols) * rowH;
-    ctx.fillStyle = c.hex;
-    roundRect(ctx, x, y, chipW, chipH, 14);
-    ctx.fill();
-    ctx.fillStyle = '#e6e6e6';
-    ctx.font = '500 30px ui-monospace, Consolas, monospace';
-    ctx.fillText(c.hex, x, y + chipH + 38);
-    const pinned = i >= card.palette.length;
-    const meta = pinned ? fr.pinnedTitle.toLowerCase() : c.accent ? fr.accent : pct(c.proportion);
+  let y = PAD + 70 + imgH + 32;
+  for (const g of groups) {
     ctx.fillStyle = '#a0a0a0';
-    ctx.font = '24px ui-monospace, Consolas, monospace';
-    ctx.fillText(meta, x, y + chipH + 66);
-  });
-
-  ctx.fillStyle = '#a0a0a0';
-  ctx.font = '28px system-ui, sans-serif';
-  const verdict = best ? `${fr.closest} ${fr.harmonies[best.type]} · ${best.score.toFixed(2).replace('.', ',')}` : fr.unreliable;
-  ctx.fillText(fitText(ctx, verdict, imgW), PAD, height - PAD);
+    ctx.font = '600 28px system-ui, sans-serif';
+    ctx.fillText(fitText(ctx, groupName(g.category?.name).toUpperCase(), imgW), PAD, y + 34);
+    y += TITLE_H;
+    g.colors.forEach((c, i) => {
+      const x = PAD + (i % COLS) * (chipW + GAP);
+      const top = y + Math.floor(i / COLS) * ROW_H;
+      ctx.fillStyle = c.hex;
+      roundRect(ctx, x, top, chipW, CHIP_H, 12);
+      ctx.fill();
+      ctx.fillStyle = '#e6e6e6';
+      ctx.font = '500 26px ui-monospace, Consolas, monospace';
+      ctx.fillText(c.hex, x, top + CHIP_H + 34);
+    });
+    y += Math.ceil(g.colors.length / COLS) * ROW_H;
+  }
 
   return new Promise((resolve, reject) =>
     canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('Encodage PNG impossible'))), 'image/png'),
   );
+}
+
+function marker(ctx: CanvasRenderingContext2D, x: number, y: number, hex: string) {
+  ctx.beginPath();
+  ctx.arc(x, y, 11, 0, Math.PI * 2);
+  ctx.fillStyle = hex;
+  ctx.fill();
+  ctx.lineWidth = 3;
+  ctx.strokeStyle = '#fff';
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(x, y, 13, 0, Math.PI * 2);
+  ctx.lineWidth = 1.5;
+  ctx.strokeStyle = 'rgba(0,0,0,0.6)';
+  ctx.stroke();
 }
 
 function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {

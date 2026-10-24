@@ -1,12 +1,14 @@
-/** Grand côté maximal de l'image analysée : assez pour la palette, rapide à traiter. */
-export const ANALYSIS_MAX_SIDE = 800;
+import type { ImagePoint } from '../types';
+
+/** Grand côté maximal de l'image gardée pour la pipette : assez fin pour viser un détail. */
+export const PICK_MAX_SIDE = 1600;
 
 export const ACCEPTED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 
 export interface LoadedImage {
   /** URL locale de l'image d'origine, pour l'affichage. */
   url: string;
-  /** Pixels RGBA de l'image réduite, pour l'analyse et la pipette. */
+  /** Pixels RGBA de l'image réduite, pour la pipette. */
   pixels: ImageData;
 }
 
@@ -14,10 +16,10 @@ export function isAcceptedImage(file: File): boolean {
   return ACCEPTED_TYPES.includes(file.type);
 }
 
-/** Lit un fichier image et le réduit en interne avant l'analyse. */
+/** Lit un fichier image et le réduit en interne. */
 export async function loadImage(file: Blob): Promise<LoadedImage> {
   const bitmap = await createImageBitmap(file);
-  const scale = Math.min(1, ANALYSIS_MAX_SIDE / Math.max(bitmap.width, bitmap.height));
+  const scale = Math.min(1, PICK_MAX_SIDE / Math.max(bitmap.width, bitmap.height));
   const width = Math.max(1, Math.round(bitmap.width * scale));
   const height = Math.max(1, Math.round(bitmap.height * scale));
   const canvas = document.createElement('canvas');
@@ -30,22 +32,46 @@ export async function loadImage(file: Blob): Promise<LoadedImage> {
   return { url: URL.createObjectURL(file), pixels: ctx.getImageData(0, 0, width, height) };
 }
 
-/**
- * Pixel de l'image réduite sous un point affiché, pour une image rendue en object-fit: cover.
- * (x, y) sont relatifs au cadre affiché de taille (boxW, boxH).
- */
-export function pixelAt(pixels: ImageData, x: number, y: number, boxW: number, boxH: number): [number, number, number] {
-  const scale = Math.max(boxW / pixels.width, boxH / pixels.height);
-  const offsetX = (boxW - pixels.width * scale) / 2;
-  const offsetY = (boxH - pixels.height * scale) / 2;
-  const px = Math.min(pixels.width - 1, Math.max(0, Math.floor((x - offsetX) / scale)));
-  const py = Math.min(pixels.height - 1, Math.max(0, Math.floor((y - offsetY) / scale)));
+export interface Rect {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+/** Zone occupée par une image affichée en object-fit: contain dans un cadre (boxW, boxH). */
+export function containRect(boxW: number, boxH: number, imgW: number, imgH: number): Rect {
+  const scale = Math.min(boxW / imgW, boxH / imgH);
+  const width = imgW * scale;
+  const height = imgH * scale;
+  return { x: (boxW - width) / 2, y: (boxH - height) / 2, width, height };
+}
+
+/** Point du cadre converti en position normalisée sur l'image, ou null hors de l'image. */
+export function toImagePoint(rect: Rect, x: number, y: number): ImagePoint | null {
+  const u = (x - rect.x) / rect.width;
+  const v = (y - rect.y) / rect.height;
+  if (u < 0 || u >= 1 || v < 0 || v >= 1) return null;
+  return { x: u, y: v };
+}
+
+/** Coordonnées du pixel sous une position normalisée. */
+export function pixelCoords(pixels: { width: number; height: number }, p: ImagePoint): [number, number] {
+  return [
+    Math.min(pixels.width - 1, Math.max(0, Math.floor(p.x * pixels.width))),
+    Math.min(pixels.height - 1, Math.max(0, Math.floor(p.y * pixels.height))),
+  ];
+}
+
+/** Couleur RVB du pixel sous une position normalisée. */
+export function pixelAt(pixels: ImageData, p: ImagePoint): [number, number, number] {
+  const [px, py] = pixelCoords(pixels, p);
   const o = (py * pixels.width + px) * 4;
   return [pixels.data[o], pixels.data[o + 1], pixels.data[o + 2]];
 }
 
 /** Encode les pixels réduits en JPEG, pour l'enregistrement. */
-export function encodeJpeg(pixels: ImageData, quality = 0.88): Promise<Blob> {
+export function encodeJpeg(pixels: ImageData, quality = 0.9): Promise<Blob> {
   const canvas = document.createElement('canvas');
   canvas.width = pixels.width;
   canvas.height = pixels.height;
