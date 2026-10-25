@@ -29,7 +29,7 @@ export interface ImageCard {
   name: string;
   /** URL locale de l'image d'origine. */
   url: string;
-  /** Image réduite enregistrée (JPEG), quand la carte vient de la bibliothèque ou y a été ajoutée. */
+  /** Image réduite enregistrée (JPEG), une fois l'image dans la galerie. */
   blob?: Blob;
   /** Pixels de l'image réduite, pour la pipette. */
   pixels: ImageData | null;
@@ -38,9 +38,6 @@ export interface ImageCard {
   colors: PickedColor[];
   /** Catégorie qui reçoit les prochaines couleurs prélevées. */
   activeCategoryId: string | null;
-  /** Enregistrée dans la bibliothèque locale. */
-  saved: boolean;
-  /** Ajoutée pendant cette session, ou rechargée depuis la bibliothèque. */
-  origin: 'session' | 'library';
-  savedAt?: number;
+  /** Date d'import : la galerie montre les plus récentes en premier. */
+  savedAt: number;
 }

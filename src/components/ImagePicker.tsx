@@ -156,7 +156,6 @@ export function ImagePicker({ card, editing, showMarkers, selectedId, onPick }: 
     <div
       ref={box}
       className={`card-image${editing ? ' editing' : ''}`}
-      data-noswipe={editing || zoomed ? '' : undefined}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}

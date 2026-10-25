@@ -9,11 +9,11 @@ import { ColorWheel } from './ColorWheel';
 interface Props {
   card: ImageCard;
   onCopy: (hex: string) => void;
-  onFlipBack: () => void;
+  onBack: () => void;
 }
 
-/** Verso d'une carte : les couleurs prélevées sur la roue RVB de saturation, et le passage entre celles qu'on sélectionne. */
-export function CardBack({ card, onCopy, onFlipBack }: Props) {
+/** Roue RVB de saturation avec les couleurs prélevées, filtrables par catégorie, et le passage entre celles qu'on sélectionne. */
+export function WheelView({ card, onCopy, onBack }: Props) {
   const groups = useMemo(() => groupByCategory(card), [card]);
   // Filtre par catégorie (clé '' = toutes). Une catégorie supprimée revient à « Toutes ».
   const [filter, setFilter] = useState('');
@@ -29,18 +29,18 @@ export function CardBack({ card, onCopy, onFlipBack }: Props) {
 
   return (
     <article className="card back" aria-label={fr.backTitle}>
-      <header className="back-head">
-        <span className="back-eyebrow">{fr.backTitle}</span>
-        <button type="button" className="flip-button inline" aria-label={fr.flip} onClick={onFlipBack}>
-          ⟲
+      <header className="view-head">
+        <button type="button" className="link" onClick={onBack}>
+          {fr.backToImage}
         </button>
+        <h2 className="back-eyebrow">{fr.backTitle}</h2>
       </header>
 
       {card.colors.length === 0 ? (
         <p className="back-empty">{fr.backEmpty}</p>
       ) : (
         <>
-          {groups.length > 1 && (
+          {groups.length > 0 && (
             <div className="harmony-chips" role="group" aria-label={fr.categoryGroup}>
               <button type="button" aria-pressed={!group} onClick={() => setFilter('')}>
                 {fr.allCategories}

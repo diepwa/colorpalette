@@ -78,7 +78,7 @@ async function compress(blob: Blob): Promise<Blob> {
 
 /** Stockage dans Firestore, propre à l'utilisateur connecté. Les images voyagent dans le document. */
 export async function createFirestoreStore(db: Firestore, uid: string): Promise<ImageStore> {
-  const { Bytes, collection, deleteDoc, doc, getDocs, orderBy, query, setDoc } = await import('firebase/firestore');
+  const { Bytes, collection, deleteDoc, doc, getDocs, orderBy, query, setDoc, updateDoc } = await import('firebase/firestore');
   const images = collection(db, 'users', uid, 'images');
   return {
     async list() {
@@ -89,6 +89,9 @@ export async function createFirestoreStore(db: Firestore, uid: string): Promise<
       const blob = await compress(image.blob);
       const bytes = Bytes.fromUint8Array(new Uint8Array(await blob.arrayBuffer()));
       await setDoc(doc(images, image.id), toDoc(image, bytes));
+    },
+    async update(id, edits) {
+      await updateDoc(doc(images, id), { categories: clean(edits.categories), colors: clean(edits.colors) });
     },
     async remove(id) {
       await deleteDoc(doc(images, id));

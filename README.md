@@ -1,6 +1,6 @@
 # Testeur d'harmonies de couleurs
 
-Outil web perso pour peintres de figurines : on importe une image, on prélève des couleurs à la pipette (avec une loupe) et on les range dans des catégories qu'on nomme soi-même (visage, vêtements…). Au verso de la carte, une roue RVB de saturation (teinte autour, gris au centre, couleur pure au bord) place ces couleurs, même les gris colorés. Les images et leurs catégories s'enregistrent dans le navigateur et s'exportent en texte, PNG ou JSON. Tout est traité dans le navigateur, aucune image n'est envoyée à un serveur.
+Outil web perso pour peintres de figurines : on importe une image, on prélève des couleurs à la pipette (avec une loupe) et on les range dans des catégories qu'on nomme soi-même (visage, vêtements…). Un bouton ouvre une roue RVB de saturation (teinte autour, gris au centre, couleur pure au bord) qui place ces couleurs, même les gris colorés, avec un filtre par catégorie. Chaque image importée est enregistrée automatiquement dans une galerie (la bulle en haut à droite) : dans le navigateur, ou dans Firestore une fois connecté.
 
 Depuis le 24/10, la palette automatique n'est plus affichée : le moteur d'extraction (`src/engine/extract.ts`) reste disponible mais l'app ne l'utilise plus. Les harmonies et compositions ne sont plus affichées non plus ; `harmonies.ts` et `analysis.ts` restent dans le moteur. Sur la roue, le rayon vaut √(chroma / chroma maximal de la teinte), pour étaler les couleurs peu saturées.
 
@@ -45,7 +45,7 @@ Les images sont stockées dans le document Firestore lui-même (JPEG réduit sou
 - `src/lib/store.ts` : enregistrement local (IndexedDB) derrière l'interface `ImageStore`.
 - `src/lib/firestoreStore.ts`, `firebase.ts`, `useAccount.ts` : la même interface sur Firestore, et la connexion par email. Firebase n'est chargé que s'il est configuré. Les enregistrements de la première version sont repris dans des catégories « Palette auto » et « Épinglées ».
 - `src/lib/wheel.ts` : place d'une couleur sur la roue de saturation et dessin du disque.
-- `src/lib/export.ts` : exports par catégorie, sans serveur : texte (presse-papiers), carte PNG avec les repères de prélèvement, JSON.
+- `src/components/` : `Editor` (image, pipette, couleurs par catégorie), `Gallery` (grille des images), `WheelView` (roue et passage entre couleurs).
 - `src/i18n/fr.ts` : chaînes de l'interface.
 
 ## Table RJB (non utilisée par l'app)
