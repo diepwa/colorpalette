@@ -35,6 +35,18 @@ describe('stockage local des images', () => {
     expect(only.colors).toHaveLength(0);
   });
 
+  it('met à jour les couleurs sans toucher à l’image', async () => {
+    const store = createIndexedDbStore(new IDBFactory());
+    await store.put(image('a', 1));
+    await store.update('a', { categories: [], colors: [picked('9', '#123456', null)] });
+    await store.update('absente', { categories: [], colors: [] });
+    const all = await store.list();
+    expect(all).toHaveLength(1);
+    expect(all[0].colors.map((c) => c.hex)).toEqual(['#123456']);
+    expect(all[0].name).toBe('a.jpg');
+    expect(all[0].savedAt).toBe(1);
+  });
+
   it('reprend les enregistrements de la première version dans des catégories', () => {
     const legacy = {
       id: 'old',

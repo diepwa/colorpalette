@@ -1,21 +1,15 @@
 /** Toutes les chaînes de l'interface, centralisées pour une i18n ultérieure. */
 export const fr = {
   appTitle: "Testeur d'harmonies",
-  addImages: 'Ajouter des images',
-  emptyTitle: 'Dépose tes images ici',
-  emptyBody: 'JPG, PNG ou WebP. Tout se passe dans ton navigateur, aucune image ne quitte ton appareil.',
-  emptyButton: 'Choisir des images',
+  importImage: 'Importer une image',
+  emptyTitle: 'Dépose une image ici',
+  emptyBody: 'JPG, PNG ou WebP. Chaque image importée est gardée dans ta galerie avec ses couleurs.',
+  emptyButton: 'Choisir une image',
   dropHint: 'Lâche pour ajouter',
   loading: 'Chargement de l’image…',
   loadError: "Impossible de lire cette image.",
-  swipeHint: 'Glisse vers le haut pour l’image suivante',
-  counter: (i: number, n: number) => `${i} / ${n}`,
   copied: (hex: string) => `${hex} copié`,
   copyFailed: (hex: string) => `Copie refusée par le navigateur : ${hex}`,
-  previous: 'Image précédente',
-  next: 'Image suivante',
-  flip: 'Retourner la carte',
-  flipHint: 'Voir la roue RVB',
 
   // Mode édition et pipette
   edit: 'Mode édition',
@@ -49,24 +43,24 @@ export const fr = {
   legacyPalette: 'Palette auto',
   legacyPinned: 'Épinglées',
 
-  // Enregistrement
-  save: 'Enregistrer',
-  unsave: 'Retirer des enregistrées',
-  saved: 'Image enregistrée',
-  unsaved: 'Image retirée des enregistrées',
-  saveFailed: 'Enregistrement impossible dans ce navigateur',
-  tabSession: 'Nouvelles',
-  tabSaved: (n: number) => `Enregistrées (${n})`,
-  savedEmptyTitle: 'Aucune image enregistrée',
-  savedEmptyBody: 'Touche ☆ sur une carte pour la garder ici. Les images restent dans ce navigateur.',
-  savedEmptyBodyCloud: 'Touche ☆ sur une carte pour la garder ici. Elle est enregistrée dans ton compte et retrouvée sur tes autres appareils.',
+  // Galerie
+  gallery: 'Galerie',
+  galleryTitle: (n: number) => `Galerie (${n})`,
+  openGallery: 'Ouvrir la galerie',
+  backToImage: '← Retour à l’image',
+  galleryEmpty: 'Aucune image pour l’instant. Importe une image pour commencer.',
+  galleryLocal: 'Images gardées dans ce navigateur. Connecte-toi pour les retrouver sur tes autres appareils.',
+  colorCount: (n: number) => `${n} couleur${n > 1 ? 's' : ''}`,
+  deleteImage: (name: string) => `Supprimer ${name}`,
+  confirmDeleteImage: (name: string) => `Supprimer « ${name} » et ses couleurs ?`,
+  imageDeleted: 'Image supprimée',
+  saveFailed: 'Enregistrement impossible',
 
   // Compte (Firestore)
   signIn: 'Connexion',
   signOut: 'Se déconnecter',
   signedInAs: (name: string) => `Connecté : ${name}`,
-  confirmSignOut: (name: string) => `Se déconnecter de ${name} ? Les images enregistrées restent dans ton compte.`,
-  signInTitle: 'Connexion à ta bibliothèque',
+  signInTitle: 'Connexion à ta galerie',
   email: 'Email',
   password: 'Mot de passe',
   signingIn: 'Connexion…',
@@ -88,7 +82,8 @@ export const fr = {
   cloudFailed: 'Bibliothèque en ligne indisponible',
   migrated: (n: number) => `${n} image${n > 1 ? 's' : ''} transférée${n > 1 ? 's' : ''} dans ton compte`,
 
-  // Verso
+  // Roue
+  openWheel: 'Voir la roue RVB',
   backTitle: 'Roue RVB',
   backEmpty: 'Prélève des couleurs sur l’image pour les voir sur la roue.',
   allCategories: 'Toutes',
@@ -103,18 +98,6 @@ export const fr = {
   pathNote:
     'Proportions de mélange « couleur de départ / couleur d’arrivée ». Le calcul suit ce que l’œil voit à l’écran : avec de vrais pigments, ajuste à l’œil.',
   toggleColor: (hex: string, n: number | null) => (n ? `Retirer ${hex} du passage (n° ${n})` : `Ajouter ${hex} au passage`),
-
-  // Exports
-  exportGroup: 'Exporter',
-  copyPalette: 'Copier',
-  copyPaletteTitle: 'Copier les couleurs en texte, par catégorie',
-  exportPng: 'PNG',
-  exportPngTitle: 'Télécharger la carte des couleurs en PNG',
-  exportJson: 'JSON',
-  exportJsonTitle: 'Télécharger les couleurs et les catégories en JSON',
-  paletteCopied: 'Couleurs copiées',
-  exportFailed: 'Export impossible',
-  nothingToExport: 'Prélève d’abord des couleurs',
 };
 
 export type Strings = typeof fr;

@@ -47,9 +47,13 @@ export function normalizeSaved(raw: SavedImage | LegacySavedImage): SavedImage {
   return { id: legacy.id, name: legacy.name, savedAt: legacy.savedAt, blob: legacy.blob, categories, colors };
 }
 
+/** Ce qui change pendant l'édition : sans l'image, pour ne pas la renvoyer à chaque couleur prélevée. */
+export type ImageEdits = Pick<SavedImage, 'categories' | 'colors'>;
+
 export interface ImageStore {
   list(): Promise<SavedImage[]>;
   put(image: SavedImage): Promise<void>;
+  update(id: string, edits: ImageEdits): Promise<void>;
   remove(id: string): Promise<void>;
 }
 
@@ -85,6 +89,11 @@ export function createIndexedDbStore(factory: IDBFactory = indexedDB): ImageStor
     },
     async put(image) {
       await request((await tx('readwrite')).put(image));
+    },
+    async update(id, edits) {
+      const store = await tx('readwrite');
+      const current = (await request(store.get(id))) as SavedImage | undefined;
+      if (current) await request(store.put({ ...current, ...edits }));
     },
     async remove(id) {
       await request((await tx('readwrite')).delete(id));

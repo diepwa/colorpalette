@@ -5,8 +5,6 @@ import { CategoryBar } from './CategoryBar';
 import { ColorChip } from './ColorChip';
 import { ImagePicker } from './ImagePicker';
 
-export type ExportKind = 'text' | 'png' | 'json';
-
 interface Props {
   card: ImageCard;
   editing: boolean;
@@ -17,14 +15,12 @@ interface Props {
   onPick: (at: ImagePoint) => void;
   onChange: (patch: Partial<ImageCard>) => void;
   onToggleEdit: () => void;
-  onToggleSave: () => void;
-  onFlip: () => void;
-  onExport: (kind: ExportKind) => void;
+  onOpenWheel: () => void;
   onCopy: (hex: string) => void;
 }
 
-/** Recto d'une carte : l'image, et les couleurs prélevées rangées par catégorie. */
-export function Card(props: Props) {
+/** Écran principal : l'image, et les couleurs prélevées rangées par catégorie. */
+export function Editor(props: Props) {
   const { card, editing, selectedId, onSelect, onChange, onCopy } = props;
   const groups = groupByCategory(card);
   const selected = card.colors.find((c) => c.id === selectedId);
@@ -62,18 +58,8 @@ export function Card(props: Props) {
           >
             ◎
           </button>
-          <button
-            type="button"
-            className={`round-button${card.saved ? ' on' : ''}`}
-            aria-label={card.saved ? fr.unsave : fr.save}
-            aria-pressed={card.saved}
-            title={card.saved ? fr.unsave : fr.save}
-            onClick={props.onToggleSave}
-          >
-            {card.saved ? '★' : '☆'}
-          </button>
-          <button type="button" className="round-button" aria-label={fr.flip} title={fr.flipHint} onClick={props.onFlip}>
-            ⟳
+          <button type="button" className="round-button" aria-label={fr.openWheel} title={fr.openWheel} onClick={props.onOpenWheel}>
+            ◍
           </button>
         </div>
       )}
@@ -128,20 +114,6 @@ export function Card(props: Props) {
                 {selected.categoryId === null && <option value="">{fr.noCategory}</option>}
               </select>
             </label>
-          )}
-
-          {card.colors.length > 0 && (
-            <div className="export-row" role="group" aria-label={fr.exportGroup}>
-              <button type="button" title={fr.copyPaletteTitle} onClick={() => props.onExport('text')}>
-                {fr.copyPalette}
-              </button>
-              <button type="button" title={fr.exportPngTitle} onClick={() => props.onExport('png')}>
-                {fr.exportPng}
-              </button>
-              <button type="button" title={fr.exportJsonTitle} onClick={() => props.onExport('json')}>
-                {fr.exportJson}
-              </button>
-            </div>
           )}
         </div>
       )}
