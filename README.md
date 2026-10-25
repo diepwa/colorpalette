@@ -1,8 +1,8 @@
 # Testeur d'harmonies de couleurs
 
-Outil web perso pour peintres de figurines : on importe une image, on prélève des couleurs à la pipette (avec une loupe) et on les range dans des catégories qu'on nomme soi-même (visage, vêtements…). Un bouton ouvre une roue RVB de saturation (teinte autour, gris au centre, couleur pure au bord) qui place ces couleurs, même les gris colorés, avec un filtre par catégorie. Chaque image importée est enregistrée automatiquement dans une galerie (la bulle en haut à droite) : dans le navigateur, ou dans Firestore une fois connecté.
+Outil web perso pour peintres de figurines : on importe une image, on prélève des couleurs à la pipette (avec une loupe) et on les range dans des catégories qu'on nomme soi-même (visage, vêtements…). Un bouton ouvre une roue des nuances de peintre (teinte autour, jaune en haut ; anneau des pigments purs autour d'un centre noir ; vers l'extérieur les nuances foncées jusqu'au pigment pur, puis les pâles) qui place ces couleurs sur la case la plus proche, avec un filtre par catégorie. Chaque image importée est enregistrée automatiquement dans une galerie (la bulle en haut à droite) : dans le navigateur, ou dans Firestore une fois connecté.
 
-Depuis le 24/10, la palette automatique n'est plus affichée : le moteur d'extraction (`src/engine/extract.ts`) reste disponible mais l'app ne l'utilise plus. Les harmonies et compositions ne sont plus affichées non plus ; `harmonies.ts` et `analysis.ts` restent dans le moteur. Sur la roue, le rayon vaut √(chroma / chroma maximal de la teinte), pour étaler les couleurs peu saturées.
+Depuis le 24/10, la palette automatique n'est plus affichée : le moteur d'extraction (`src/engine/extract.ts`) reste disponible mais l'app ne l'utilise plus. Les harmonies et compositions ne sont plus affichées non plus ; `harmonies.ts` et `analysis.ts` restent dans le moteur. Sur la roue, une couleur est posée sur la nuance foncée (pigment × valeur) ou pâle (pigment + blanc) la plus proche de sa teinte TSV ; les gris vont au centre.
 
 Le cahier des charges est dans [BRIEF.md](BRIEF.md).
 
@@ -44,7 +44,7 @@ Les images sont stockées dans le document Firestore lui-même (JPEG réduit sou
 - `src/lib/loadImage.ts` : chargement de l'image (réduite à 1600 px pour la pipette) et conversion d'un point de l'écran en pixel.
 - `src/lib/store.ts` : enregistrement local (IndexedDB) derrière l'interface `ImageStore`.
 - `src/lib/firestoreStore.ts`, `firebase.ts`, `useAccount.ts` : la même interface sur Firestore, et la connexion par email. Firebase n'est chargé que s'il est configuré. Les enregistrements de la première version sont repris dans des catégories « Palette auto » et « Épinglées ».
-- `src/lib/wheel.ts` : place d'une couleur sur la roue de saturation et dessin du disque.
+- `src/lib/wheel.ts` : place d'une couleur sur la roue des nuances et dessin du disque en cases.
 - `src/components/` : `Editor` (image, pipette, couleurs par catégorie), `Gallery` (grille des images), `WheelView` (roue et passage entre couleurs).
 - `src/i18n/fr.ts` : chaînes de l'interface.
 

@@ -12,7 +12,7 @@ interface Props {
   onBack: () => void;
 }
 
-/** Roue RVB de saturation avec les couleurs prélevées, filtrables par catégorie, et le passage entre celles qu'on sélectionne. */
+/** Roue des nuances avec les couleurs prélevées, filtrables par catégorie, et le passage entre celles qu'on sélectionne. */
 export function WheelView({ card, onCopy, onBack }: Props) {
   const groups = useMemo(() => groupByCategory(card), [card]);
   // Filtre par catégorie (clé '' = toutes). Une catégorie supprimée revient à « Toutes ».

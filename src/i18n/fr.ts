@@ -83,12 +83,13 @@ export const fr = {
   migrated: (n: number) => `${n} image${n > 1 ? 's' : ''} transférée${n > 1 ? 's' : ''} dans ton compte`,
 
   // Roue
-  openWheel: 'Voir la roue RVB',
-  backTitle: 'Roue RVB',
+  openWheel: 'Voir la roue des nuances',
+  backTitle: 'Roue des nuances',
   backEmpty: 'Prélève des couleurs sur l’image pour les voir sur la roue.',
   allCategories: 'Toutes',
-  wheelLabel: (n: number) => `Roue RVB avec ${n} couleur${n > 1 ? 's' : ''} prélevée${n > 1 ? 's' : ''}`,
-  wheelHint: 'Teinte autour de la roue, saturation du centre (gris) vers le bord. Touche plusieurs couleurs pour voir le passage de l’une à l’autre.',
+  wheelLabel: (n: number) => `Roue des nuances avec ${n} couleur${n > 1 ? 's' : ''} prélevée${n > 1 ? 's' : ''}`,
+  wheelHint:
+    'Autour du centre, les pigments purs. Vers l’extérieur, chaque teinte va du plus foncé au pigment pur, puis au plus pâle. Chaque couleur est posée sur la case qui lui ressemble le plus ; les gris vont au centre, du noir au blanc. Touche plusieurs couleurs pour voir le passage de l’une à l’autre.',
   pathHeading: 'Passage',
   pathPickMore: 'Touche une deuxième couleur, sur la roue ou dans la liste.',
   pathSteps: 'Nuances',
