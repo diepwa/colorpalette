@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { hexToLch } from '../engine';
-import { wheelPosition } from './wheel';
+import { maxChroma, wheelPosition } from './wheel';
 
 describe('place des couleurs sur la roue de saturation', () => {
   it('met les couleurs pures au bord et les gris au centre', () => {
@@ -21,5 +21,13 @@ describe('place des couleurs sur la roue de saturation', () => {
     const r = ['#4e4243', '#7a3f45', '#b01e2a'].map((h) => wheelPosition(hexToLch(h)).radius);
     expect(r[0]).toBeLessThan(r[1]);
     expect(r[1]).toBeLessThan(r[2]);
+  });
+
+  it('mesure la saturation à la clarté de la couleur, comme le fond dessiné à cette clarté', () => {
+    // Le fond à la clarté L montre, au rayon r, le chroma r² × chroma maximal (L, h).
+    const L = 0.9;
+    const h = 95;
+    const C = 0.25 * maxChroma(L, h);
+    expect(wheelPosition({ L, C, h }).radius).toBeCloseTo(0.5, 2);
   });
 });

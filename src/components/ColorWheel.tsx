@@ -24,16 +24,19 @@ interface Props {
   /** Couleurs sélectionnées, dans l'ordre du passage. */
   chain: PickedColor[];
   steps: number;
+  /** Clarté (OKLab L) à laquelle le fond de la roue est dessiné. */
+  lightness: number;
   label: string;
   onToggle: (id: string) => void;
 }
 
 /**
- * Roue RVB de saturation : teinte autour, gris au centre, teinte pure au bord ; tes couleurs placées dessus.
- * Le passage entre les couleurs sélectionnées est tracé avec ses nuances intermédiaires.
+ * Roue RVB de saturation : teinte autour, gris au centre, teinte la plus saturée au bord ; tes couleurs placées dessus.
+ * Le fond est dessiné à une clarté : les couleurs de cette clarté sont exactement sur leur teinte, les autres
+ * sont estompées. Le passage entre les couleurs sélectionnées est tracé avec ses nuances intermédiaires.
  */
-export function ColorWheel({ colors, chain, steps, label, onToggle }: Props) {
-  const disc = useMemo(() => saturationDisc(R * 4), []);
+export function ColorWheel({ colors, chain, steps, lightness, label, onToggle }: Props) {
+  const disc = useMemo(() => saturationDisc(R * 4, lightness), [lightness]);
   const order = new Map(chain.map((c, i) => [c.id, i + 1]));
   // Les couleurs sélectionnées sont dessinées par-dessus les autres.
   const ordered = [...colors].sort((a, b) => Number(order.has(a.id)) - Number(order.has(b.id)));
@@ -67,10 +70,12 @@ export function ColorWheel({ colors, chain, steps, label, onToggle }: Props) {
         const [x, y] = place(c.lch);
         const n = order.get(c.id) ?? null;
         const r = n ? 11 : 8;
+        const far = !n && Math.abs(c.lch.L - lightness) > 0.12;
         return (
           <g
             key={c.id}
             className="wheel-point"
+            opacity={far ? 0.5 : 1}
             role="button"
             tabIndex={0}
             aria-pressed={n !== null}

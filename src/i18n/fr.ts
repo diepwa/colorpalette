@@ -88,7 +88,9 @@ export const fr = {
   backEmpty: 'Prélève des couleurs sur l’image pour les voir sur la roue.',
   allCategories: 'Toutes',
   wheelLabel: (n: number) => `Roue RVB avec ${n} couleur${n > 1 ? 's' : ''} prélevée${n > 1 ? 's' : ''}`,
-  wheelHint: 'Teinte autour de la roue, saturation du centre (gris) vers le bord. Touche plusieurs couleurs pour voir le passage de l’une à l’autre.',
+  wheelHint:
+    'Teinte autour de la roue, saturation du centre (gris) vers le bord. Le fond est montré à la clarté d’une couleur : touche-la, ou règle le curseur. Les couleurs plus claires ou plus foncées sont estompées. Touche plusieurs couleurs pour voir le passage de l’une à l’autre.',
+  wheelLightness: 'Clarté du fond',
   pathHeading: 'Passage',
   pathPickMore: 'Touche une deuxième couleur, sur la roue ou dans la liste.',
   pathSteps: 'Nuances',

@@ -912,3 +912,16 @@ button:focus-visible {
   font-size: 0.8rem;
   cursor: pointer;
 }
+
+.wheel-lightness {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+.wheel-lightness input {
+  flex: 1;
+  accent-color: var(--text);
+}
