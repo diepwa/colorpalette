@@ -89,7 +89,7 @@ export const fr = {
   allCategories: 'Toutes',
   wheelLabel: (n: number) => `Roue des nuances avec ${n} couleur${n > 1 ? 's' : ''} prélevée${n > 1 ? 's' : ''}`,
   wheelHint:
-    'Autour du centre, les pigments purs. Vers l’extérieur, chaque teinte va du plus foncé au pigment pur, puis au plus pâle. Chaque couleur est posée sur la case la plus proche, les gris au centre. Touche plusieurs couleurs pour voir le passage de l’une à l’autre.',
+    'Autour du centre, les pigments purs. Vers l’extérieur, chaque teinte va du plus foncé au pigment pur, puis au plus pâle. Chaque couleur est posée sur la case qui lui ressemble le plus ; les gris vont au centre, du noir au blanc. Touche plusieurs couleurs pour voir le passage de l’une à l’autre.',
   pathHeading: 'Passage',
   pathPickMore: 'Touche une deuxième couleur, sur la roue ou dans la liste.',
   pathSteps: 'Nuances',

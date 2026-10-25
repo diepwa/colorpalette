@@ -18,8 +18,10 @@ describe('place des couleurs sur la roue des nuances', () => {
     expect(wheelPosition('#ffb0b0').radius).toBeGreaterThan(RINGS.shadeEnd);
   });
 
-  it('envoie les gris au centre', () => {
+  it('envoie les gris au centre, les clairs vers le bord du disque', () => {
     expect(wheelPosition('#808080').radius).toBeLessThan(RINGS.black);
+    expect(wheelPosition('#202020').radius).toBeLessThan(wheelPosition('#e2dedd').radius);
+    expect(wheelPosition('#e2dedd').radius).toBeLessThan(RINGS.black);
   });
 
   it('donne à #4e4243 une place dans les rouges foncés', () => {
@@ -37,7 +39,7 @@ describe('place des couleurs sur la roue des nuances', () => {
   });
 
   it('pose une couleur du disque sur la case de cette couleur', () => {
-    for (const [r, angle] of [[0.5, 100], [0.7, 200], [0.9, 300], [0.3, 30]]) {
+    for (const [r, angle] of [[0.5, 100], [0.7, 200], [0.9, 300], [0.3, 30], [0.42, 175], [0.85, 5]]) {
       const c = discColor(r, angle)!;
       const p = wheelPosition(hex(c));
       expect(hex(discColor(p.radius, p.angle)!)).toBe(hex(c));

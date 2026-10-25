@@ -6,7 +6,7 @@ import type { PickedColor } from '../types';
 
 const SIZE = 260;
 const C = SIZE / 2;
-const R = 118;
+const R = 126;
 
 /** 0° en haut, sens horaire. */
 function polar(angle: number, r: number): [number, number] {

@@ -1,13 +1,15 @@
+import { rgb8ToOklab, type Lab } from '../engine';
+
 /**
  * Roue des nuances, comme les roues de peintre : teinte autour (jaune en haut,
- * rouge à droite, bleu en bas), et du centre vers le bord le noir, un anneau
+ * rouge à droite, bleu en bas), et du centre vers le bord les gris, un anneau
  * des pigments purs, les nuances foncées (pigment + noir) jusqu'au pigment pur,
  * puis les nuances pâles (pigment + blanc).
  */
 
 /** Rayons relatifs des zones de la roue. */
 export const RINGS = {
-  /** Disque noir du centre, où vont aussi les gris. */
+  /** Disque des gris au centre, du noir (milieu) au blanc (bord). */
   black: 0.16,
   /** Anneau des pigments purs, de black à pure. */
   pure: 0.24,
@@ -24,8 +26,8 @@ const SHADE_W = (RINGS.shadeEnd - RINGS.pure) / SHADE_LEVELS;
 const TINT_W = (1 - RINGS.shadeEnd) / TINT_LEVELS;
 /** Pâleur du dernier anneau : part de blanc (1 = blanc pur). */
 const MAX_TINT = 0.75;
-/** En dessous de cette saturation, une couleur est un gris : elle va au centre. */
-const GRAY = 0.06;
+/** En dessous de ce chroma OKLCH, une couleur est un gris : elle va au centre. */
+const GRAY = 0.012;
 
 type Rgb = [number, number, number];
 
@@ -56,33 +58,60 @@ function pure(h: number): Rgb {
 const angleOf = (h: number) => (((60 - h) % 360) + 360) % 360;
 const hueOf = (angle: number) => (((60 - angle) % 360) + 360) % 360;
 
-const dist = (a: Rgb, b: Rgb) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
-const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
+
+const labOf = (c: Rgb): Lab => rgb8ToOklab(Math.round(c[0] * 255), Math.round(c[1] * 255), Math.round(c[2] * 255));
+
+/** Gris de clarté OKLab L, en RVB 0–1. */
+function gray(L: number): Rgb {
+  const lin = Math.max(0, Math.min(1, L)) ** 3;
+  const v = lin <= 0.0031308 ? 12.92 * lin : 1.055 * lin ** (1 / 2.4) - 0.055;
+  return [v, v, v];
+}
+
+interface Cell {
+  radius: number;
+  lab: Lab;
+}
+
+let cells: Cell[][] | null = null;
+
+/** Cases de chaque secteur (rayon au milieu de la case, couleur en OKLab), calculées une fois. */
+function sectorCells(): Cell[][] {
+  if (!cells) {
+    cells = Array.from({ length: SECTORS }, (_, sector) => {
+      const angle = (sector + 0.5) * (360 / SECTORS);
+      const radii = [
+        ...Array.from({ length: SHADE_LEVELS }, (_, i) => RINGS.pure + (i + 0.5) * SHADE_W),
+        ...Array.from({ length: TINT_LEVELS }, (_, i) => RINGS.shadeEnd + (i + 0.5) * TINT_W),
+      ];
+      return radii.map((radius) => ({ radius, lab: labOf(discColor(radius, angle)!) }));
+    });
+  }
+  return cells;
+}
 
 /**
- * Place d'une couleur sur la roue : angle = sa teinte ; rayon = la nuance foncée
- * (pigment × valeur) ou pâle (pigment + blanc) de cette teinte la plus proche.
- * Les gris vont au centre. Le point garde la vraie couleur, le fond montre la nuance la plus proche.
+ * Place d'une couleur sur la roue : angle = sa teinte ; rayon = la case de cette
+ * teinte qui lui ressemble le plus à l'œil (distance OKLab, qui compte autant la
+ * clarté que la couleur). Les gris vont au centre, plus clairs vers le bord du disque.
+ * Le point garde la vraie couleur.
  */
 export function wheelPosition(hex: string): { angle: number; radius: number } {
   const c = hexToRgb(hex);
-  const { h, s } = hueSat(c);
-  const angle = angleOf(h);
-  if (s < GRAY) return { angle, radius: RINGS.black / 2 };
-  const p = pure(h);
-  // Nuance foncée la plus proche : projection sur le segment noir → pigment.
-  const v = clamp01((c[0] * p[0] + c[1] * p[1] + c[2] * p[2]) / (p[0] ** 2 + p[1] ** 2 + p[2] ** 2));
-  const shade: Rgb = [p[0] * v, p[1] * v, p[2] * v];
-  // Nuance pâle la plus proche : projection sur le segment pigment → blanc.
-  const u = [1 - p[0], 1 - p[1], 1 - p[2]];
-  const w = clamp01(((c[0] - p[0]) * u[0] + (c[1] - p[1]) * u[1] + (c[2] - p[2]) * u[2]) / (u[0] ** 2 + u[1] ** 2 + u[2] ** 2));
-  const tint: Rgb = [p[0] + u[0] * w, p[1] + u[1] * w, p[2] + u[2] * w];
-  // Rayons au milieu des anneaux : v = 1 et w = 0 tombent tous deux au milieu de l'anneau du pigment pur.
-  const radius =
-    dist(c, shade) <= dist(c, tint)
-      ? Math.max(RINGS.pure, RINGS.pure + (v * SHADE_LEVELS - 0.5) * SHADE_W)
-      : Math.min(1, RINGS.shadeEnd + ((w / MAX_TINT) * TINT_LEVELS - 0.5) * TINT_W);
-  return { angle, radius };
+  const angle = angleOf(hueSat(c).h);
+  const lab = labOf(c);
+  if (Math.hypot(lab.a, lab.b) < GRAY) return { angle, radius: Math.min(0.95, Math.max(0.05, lab.L)) * RINGS.black };
+  const sector = Math.min(SECTORS - 1, Math.floor(angle / (360 / SECTORS)));
+  let best = sectorCells()[sector][0];
+  let bestD = Infinity;
+  for (const cell of sectorCells()[sector]) {
+    const d = Math.hypot(cell.lab.L - lab.L, cell.lab.a - lab.a, cell.lab.b - lab.b);
+    if (d < bestD) {
+      bestD = d;
+      best = cell;
+    }
+  }
+  return { angle, radius: best.radius };
 }
 
 let disc: string | null = null;
@@ -90,7 +119,7 @@ let disc: string | null = null;
 /** Couleur d'un point du disque, en RVB 0–1 (null hors de la roue). */
 export function discColor(r: number, angle: number): Rgb | null {
   if (r > 1) return null;
-  if (r < RINGS.black) return [0, 0, 0];
+  if (r < RINGS.black) return gray(r / RINGS.black);
   if (r < RINGS.pure) return pure(hueOf(angle));
   // Au-delà de l'anneau intérieur, des cases : une teinte par secteur, une nuance par anneau.
   const sector = Math.floor(angle / (360 / SECTORS));
