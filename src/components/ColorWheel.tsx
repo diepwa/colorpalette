@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { mixSteps } from '../engine';
 import { fr } from '../i18n/fr';
-import { saturationDisc, wheelPosition } from '../lib/wheel';
+import { RINGS, SECTORS, SHADE_LEVELS, TINT_LEVELS, shadeDisc, wheelPosition } from '../lib/wheel';
 import type { PickedColor } from '../types';
 
 const SIZE = 260;
@@ -14,29 +14,33 @@ function polar(angle: number, r: number): [number, number] {
   return [C + r * Math.cos(a), C + r * Math.sin(a)];
 }
 
-const place = (lch: PickedColor['lch']) => {
-  const { angle, radius } = wheelPosition(lch);
+const place = (hex: string) => {
+  const { angle, radius } = wheelPosition(hex);
   return polar(angle, radius * R);
 };
+
+/** Limites des anneaux de cases (nuances foncées puis pâles). */
+const ringEdges = [
+  ...Array.from({ length: SHADE_LEVELS + 1 }, (_, i) => RINGS.pure + ((RINGS.shadeEnd - RINGS.pure) * i) / SHADE_LEVELS),
+  ...Array.from({ length: TINT_LEVELS - 1 }, (_, i) => RINGS.shadeEnd + ((1 - RINGS.shadeEnd) * (i + 1)) / TINT_LEVELS),
+];
 
 interface Props {
   colors: PickedColor[];
   /** Couleurs sélectionnées, dans l'ordre du passage. */
   chain: PickedColor[];
   steps: number;
-  /** Clarté (OKLab L) à laquelle le fond de la roue est dessiné. */
-  lightness: number;
   label: string;
   onToggle: (id: string) => void;
 }
 
 /**
- * Roue RVB de saturation : teinte autour, gris au centre, teinte la plus saturée au bord ; tes couleurs placées dessus.
- * Le fond est dessiné à une clarté : les couleurs de cette clarté sont exactement sur leur teinte, les autres
- * sont estompées. Le passage entre les couleurs sélectionnées est tracé avec ses nuances intermédiaires.
+ * Roue des nuances : teinte autour, pigments purs autour du centre noir, nuances foncées puis pâles vers le bord ;
+ * tes couleurs placées dessus.
+ * Le passage entre les couleurs sélectionnées est tracé avec ses nuances intermédiaires.
  */
-export function ColorWheel({ colors, chain, steps, lightness, label, onToggle }: Props) {
-  const disc = useMemo(() => saturationDisc(R * 4, lightness), [lightness]);
+export function ColorWheel({ colors, chain, steps, label, onToggle }: Props) {
+  const disc = useMemo(() => shadeDisc(R * 4), []);
   const order = new Map(chain.map((c, i) => [c.id, i + 1]));
   // Les couleurs sélectionnées sont dessinées par-dessus les autres.
   const ordered = [...colors].sort((a, b) => Number(order.has(a.id)) - Number(order.has(b.id)));
@@ -45,37 +49,42 @@ export function ColorWheel({ colors, chain, steps, lightness, label, onToggle }:
   return (
     <svg className="wheel" viewBox={`0 0 ${SIZE} ${SIZE}`} role="group" aria-label={label}>
       <image href={disc} x={C - R} y={C - R} width={R * 2} height={R * 2} />
-      {[0.25, 0.5, 0.75].map((s) => (
-        <circle key={s} cx={C} cy={C} r={R * Math.sqrt(s)} fill="none" stroke="rgba(255,255,255,0.18)" />
-      ))}
+      <g className="wheel-grid" stroke="rgba(255,255,255,0.35)" strokeWidth={0.6} fill="none">
+        {ringEdges.map((e) => (
+          <circle key={e} cx={C} cy={C} r={R * e} />
+        ))}
+        {Array.from({ length: SECTORS }, (_, i) => {
+          const [x1, y1] = polar((i * 360) / SECTORS, R * RINGS.pure);
+          const [x2, y2] = polar((i * 360) / SECTORS, R);
+          return <line key={i} x1={x1} y1={y1} x2={x2} y2={y2} />;
+        })}
+      </g>
       <circle cx={C} cy={C} r={R} fill="none" stroke="var(--border)" />
 
       {path.length > 1 && (
         <g className="wheel-path">
           <polyline
-            points={path.map((s) => place(s.lch).join(',')).join(' ')}
+            points={path.map((s) => place(s.hex).join(',')).join(' ')}
             fill="none"
             stroke="#fff"
             strokeWidth={2}
             strokeDasharray="4 3"
           />
           {path.map((s, i) => {
-            const [x, y] = place(s.lch);
+            const [x, y] = place(s.hex);
             return <circle key={i} cx={x} cy={y} r={4} fill={s.hex} stroke="#fff" strokeWidth={1} />;
           })}
         </g>
       )}
 
       {ordered.map((c) => {
-        const [x, y] = place(c.lch);
+        const [x, y] = place(c.hex);
         const n = order.get(c.id) ?? null;
         const r = n ? 11 : 8;
-        const far = !n && Math.abs(c.lch.L - lightness) > 0.12;
         return (
           <g
             key={c.id}
             className="wheel-point"
-            opacity={far ? 0.5 : 1}
             role="button"
             tabIndex={0}
             aria-pressed={n !== null}

@@ -12,7 +12,7 @@ interface Props {
   onBack: () => void;
 }
 
-/** Roue RVB de saturation avec les couleurs prélevées, filtrables par catégorie, et le passage entre celles qu'on sélectionne. */
+/** Roue des nuances avec les couleurs prélevées, filtrables par catégorie, et le passage entre celles qu'on sélectionne. */
 export function WheelView({ card, onCopy, onBack }: Props) {
   const groups = useMemo(() => groupByCategory(card), [card]);
   // Filtre par catégorie (clé '' = toutes). Une catégorie supprimée revient à « Toutes ».
@@ -25,17 +25,7 @@ export function WheelView({ card, onCopy, onBack }: Props) {
   const shown = group ? [group] : groups;
   const colors = shown.flatMap((g) => g.colors);
   const chain = chainIds.map((id) => card.colors.find((c) => c.id === id)).filter((c): c is PickedColor => !!c);
-  // Clarté du fond de la roue : celle de la dernière couleur touchée, sinon la clarté médiane des couleurs affichées.
-  const [lightness, setLightness] = useState<number | null>(null);
-  const sortedL = colors.map((c) => c.lch.L).sort((a, b) => a - b);
-  const shownL = lightness ?? sortedL[Math.floor(sortedL.length / 2)] ?? 0.6;
-  const toggle = (id: string) => {
-    if (!chainIds.includes(id)) {
-      const color = card.colors.find((c) => c.id === id);
-      if (color) setLightness(color.lch.L);
-    }
-    setChainIds((ids) => (ids.includes(id) ? ids.filter((k) => k !== id) : [...ids, id]));
-  };
+  const toggle = (id: string) => setChainIds((ids) => (ids.includes(id) ? ids.filter((k) => k !== id) : [...ids, id]));
 
   return (
     <article className="card back" aria-label={fr.backTitle}>
@@ -69,24 +59,7 @@ export function WheelView({ card, onCopy, onBack }: Props) {
             </div>
           )}
 
-          <ColorWheel
-            colors={colors}
-            chain={chain}
-            steps={steps}
-            lightness={shownL}
-            label={fr.wheelLabel(colors.length)}
-            onToggle={toggle}
-          />
-          <label className="wheel-lightness">
-            {fr.wheelLightness}
-            <input
-              type="range"
-              min={5}
-              max={98}
-              value={Math.round(shownL * 100)}
-              onChange={(e) => setLightness(Number(e.target.value) / 100)}
-            />
-          </label>
+          <ColorWheel colors={colors} chain={chain} steps={steps} label={fr.wheelLabel(colors.length)} onToggle={toggle} />
 
           <div className="back-colors">
             {chain.length > 0 ? (

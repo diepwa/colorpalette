@@ -83,14 +83,13 @@ export const fr = {
   migrated: (n: number) => `${n} image${n > 1 ? 's' : ''} transférée${n > 1 ? 's' : ''} dans ton compte`,
 
   // Roue
-  openWheel: 'Voir la roue RVB',
-  backTitle: 'Roue RVB',
+  openWheel: 'Voir la roue des nuances',
+  backTitle: 'Roue des nuances',
   backEmpty: 'Prélève des couleurs sur l’image pour les voir sur la roue.',
   allCategories: 'Toutes',
-  wheelLabel: (n: number) => `Roue RVB avec ${n} couleur${n > 1 ? 's' : ''} prélevée${n > 1 ? 's' : ''}`,
+  wheelLabel: (n: number) => `Roue des nuances avec ${n} couleur${n > 1 ? 's' : ''} prélevée${n > 1 ? 's' : ''}`,
   wheelHint:
-    'Teinte autour de la roue, saturation du centre (gris) vers le bord. Le fond est montré à la clarté d’une couleur : touche-la, ou règle le curseur. Les couleurs plus claires ou plus foncées sont estompées. Touche plusieurs couleurs pour voir le passage de l’une à l’autre.',
-  wheelLightness: 'Clarté du fond',
+    'Autour du centre, les pigments purs. Vers l’extérieur, chaque teinte va du plus foncé au pigment pur, puis au plus pâle. Chaque couleur est posée sur la case la plus proche, les gris au centre. Touche plusieurs couleurs pour voir le passage de l’une à l’autre.',
   pathHeading: 'Passage',
   pathPickMore: 'Touche une deuxième couleur, sur la roue ou dans la liste.',
   pathSteps: 'Nuances',
